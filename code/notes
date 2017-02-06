@@ -1,0 +1,140 @@
+i) Read .def file
+ii) Find line RADI= and read radii (in arcsec)
+iii) Find line VROT= and read rotation velocities (in km/s)
+iv) Make a viewgraph VROT (rotation velocity) vs RADI
+v) Enable a shift of data points in that viewgraph (only in vrot direction)
+vi) Enable a .def file to be written, which is identical to the input .def file, but with the VROT changed according to the shifted data points.
+
+Choose GUI module before: probably Tkinter (because it's probably the standard) but have a look if anything better existst. The main criterion is that it will be maintained over years to come (probably Tkinter).
+
+
+1. Use PyQt since it has a widget for dragging and dropping
+2. Push a and f down and make them as argument to animate
+3. You may want to use buttons to save the plot
+4. Have user enter the name of the default file and the name of the new default file
+5. Have markers on the graph
+6. The save of the file algorithm is too long. perhaps you shouldn't use a temp file.
+
+
+class Complex:
+	def __init__(self, realpart, imagpart):
+		self.r = realpart
+		self.i = imagpart
+
+perhaps you should have your data in a dictionary
+list of dictionary
+dictionary of list
+
+
+
+
+    if (mPress[0] < RADIvals[0]+0.5) and (mPress[0] > RADIvals[0]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[0])
+        VROTvals[0] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b') 
+    
+    if (mPress[0] < RADIvals[1]+0.5) and (mPress[0] > RADIvals[1]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[1])
+        VROTvals[1] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+    
+    if (mPress[0] < RADIvals[2]+0.5) and (mPress[0] > RADIvals[2]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[2])
+        VROTvals[2] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+    
+    if (mPress[0] < RADIvals[3]+0.5) and (mPress[0] > RADIvals[3]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[3])
+        VROTvals[3] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+        
+    if (mPress[0] < RADIvals[4]+0.5) and (mPress[0] > RADIvals[4]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[4])
+        VROTvals[4] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+    
+    if (mPress[0] < RADIvals[5]+0.5) and (mPress[0] > RADIvals[5]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[5])
+        VROTvals[5] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+    
+    if (mPress[0] < RADIvals[6]+0.5) and (mPress[0] > RADIvals[6]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[6])
+        VROTvals[6] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+    
+    if (mPress[0] < RADIvals[7]+0.5) and (mPress[0] > RADIvals[7]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[0])
+        VROTvals[7] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+    
+    if (mPress[0] < RADIvals[8]+0.5) and (mPress[0] > RADIvals[8]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[8])
+        VROTvals[8] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+    
+    if (mPress[0] < RADIvals[9]+0.5) and (mPress[0] > RADIvals[9]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[9])
+        VROTvals[9] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+    
+    if (mPress[0] < RADIvals[10]+0.5) and (mPress[0] > RADIvals[10]-0.5):
+        print ('tmpFile:',mPress[0], ', RADIvals:',RADIvals[10])
+        VROTvals[10] =  mMotion[0]
+        a.clear()
+        for ax in f.get_axes():
+            ax.set_xlabel("RADI (arcsec)")
+            ax.set_ylabel("VROT(km/s)")
+        a.plot(RADIvals, VROTvals,linestyle='--', marker='o', color='b')
+
+
+for j in range(len(RADIvals)):
+        if (mPress[0] < RADIvals[j]+0.5) and (mPress[0] > RADIvals[j]-0.5):
+            #print ('mPress:',mPress[0], ', RADIvals:',RADIvals[j])
+            VROTvals[j] = mMotion[0]
+            a.clear()
+            for ax in f.get_axes():
+                ax.set_xlabel("RADI (arcsec)")
+                ax.set_ylabel("VROT(km/s)")
+            a.plot(RADIvals, VROTvals,'--bo')
+    
