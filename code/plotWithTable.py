@@ -1,4 +1,4 @@
-    # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Created on Sat Feb  4 22:49:38 2017
 
@@ -37,7 +37,6 @@ class PrettyWidget(QtGui.QWidget):
     unitMeas = 'km/s'
     mPress=[-5+min(RADI)];mRelease=['None'];mMotion=[-5+min(RADI)]
     parVals = {'RADI':RADI[:],'VROT':VROT[:]}
-    figure = plt.figure() 
     
     
     
@@ -47,7 +46,7 @@ class PrettyWidget(QtGui.QWidget):
         
         
     def initUI(self):
-        self.setGeometry(600, 300, 1000, 600)
+        self.setGeometry(600,300, 1000, 600)
         self.center()
         self.setWindowTitle('Revision on Plots, Tables and File Browser')     
         
@@ -56,8 +55,8 @@ class PrettyWidget(QtGui.QWidget):
         self.setLayout(grid)
                     
         #Canvas and Toolbar
-   
-        self.canvas = FigureCanvas(self.figure)
+        self.figure = plt.figure(figsize=(15,5))    
+        self.canvas = FigureCanvas(self.figure)     
         self.toolbar = NavigationToolbar(self.canvas, self)
 #        self.canvas = FigureCanvas(self.f)
         
@@ -237,7 +236,6 @@ class PrettyWidget(QtGui.QWidget):
         self.move(qr.topLeft())
         
     def getClick(self,event):
-        print ("getClicked: ",event.xdata)
         if event.xdata == None:
             pass
         else:
@@ -245,7 +243,6 @@ class PrettyWidget(QtGui.QWidget):
             self.mRelease[0]="None"
             
     def getRelease(self,event):
-        print ("getReleased: ",event.ydata)
         if not(event.ydata == None):
             self.mRelease[0]=round(float(event.ydata),self.numPrecisionY)
             if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
@@ -254,7 +251,6 @@ class PrettyWidget(QtGui.QWidget):
                 self.mRelease[0]="None"
     
     def getMotion(self,event):
-#        print (event.ydata)
         if event.ydata == None:
             pass
         else:
@@ -270,52 +266,35 @@ class PrettyWidget(QtGui.QWidget):
                 self.parVals[self.par][i]=round(tempHistoryList[i],self.numPrecisionY) 
             self.key = "Yes"
             
-def animate(i):
-
-    if PrettyWidget.key=="Yes":
-#        a.clear()
-#        for ax in f.get_axes():
-#            ax.set_xlabel("RADI (arcsec)")
-#            ax.set_ylabel(par + "( "+unitMeas+ " )")
-#        print(historyList[par][len(historyList[par])-1])
-#        a.plot(parVals['RADI'], historyList[par][len(historyList[par])-1],'--bo')
-#        a.set_xlim(xScale[0],xScale[1])            
-#        a.set_ylim(yScale[0],yScale[1]) 
-        plt.cla()
-        ax = PrettyWidget.figure.add_subplot(111)
-        if PrettyWidget.key == "Yes":
-            ax.plot(PrettyWidget.parVals['RADI'], PrettyWidget.historyList[PrettyWidget.par][len(PrettyWidget.historyList[PrettyWidget.par])-1],'--bo')
-#        else:
-#            ax.plot(PrettyWidget.parVals['RADI'], PrettyWidget.parVals[PrettyWidget.par],'--bo')
-        ax.set_title('Plot')
-#        PrettyWidget.canvas.draw()
-        PrettyWidget.key = "No"
+    def animate(self,i):
     
-    for j in range(len(PrettyWidget.parVals['RADI'])):
-        if (PrettyWidget.mPress[0] < (PrettyWidget.parVals['RADI'][j])+3) and (PrettyWidget.mPress[0] > (PrettyWidget.parVals['RADI'][j])-3) and (PrettyWidget.mRelease[0]=="None"):
-            PrettyWidget.parVals[PrettyWidget.par][j] = PrettyWidget.mMotion[0]
-            #print("historyList in motion: ",historyList)
+        if self.key=="Yes":
+    #        a.clear()
+    #        for ax in f.get_axes():
+    #            ax.set_xlabel("RADI (arcsec)")
+    #            ax.set_ylabel(par + "( "+unitMeas+ " )")
+    #        print(historyList[par][len(historyList[par])-1])
+    #        a.plot(parVals['RADI'], historyList[par][len(historyList[par])-1],'--bo')
+    #        a.set_xlim(xScale[0],xScale[1])            
+    #        a.set_ylim(yScale[0],yScale[1]) 
+            self.plot()
+            self.key = "No"
+        
+        for j in range(len(self.parVals['RADI'])):
+            if (self.mPress[0] < (self.parVals['RADI'][j])+3) and (self.mPress[0] > (self.parVals['RADI'][j])-3) and (self.mRelease[0]=="None"):
+                self.parVals[self.par][j] = self.mMotion[0]
+                #print("historyList in motion: ",historyList)
 #                a.clear()
-#            for ax in f.get_axes():
-#                ax.set_xlabel("RADI (arcsec)")
-#                ax.set_ylabel(par + "( "+unitMeas+ " )")
-#            a.plot(parVals['RADI'], parVals[par],'--bo')
-            plt.cla()
-            ax = PrettyWidget.figure.add_subplot(111)
-#            if PrettyWidget.key == "Yes":
-#                ax.plot(PrettyWidget.parVals['RADI'], PrettyWidget.historyList[PrettyWidget.par][len(PrettyWidget.historyList[PrettyWidget.par])-1],'--bo')
-#            else:
-            ax.plot(PrettyWidget.parVals['RADI'], PrettyWidget.parVals[PrettyWidget.par],'--bo')
-            ax.set_title('Plot')
-    #        PrettyWidget.canvas.draw()
-            PrettyWidget.key = "No"
-            
-            
-#            print("mMotion:",mMotion," yScale:",yScale)
-            if (PrettyWidget.yScale[1] - PrettyWidget.mMotion[0])<=50:
-                PrettyWidget.yScale[1] += 50
-            elif (PrettyWidget.mMotion[0] - PrettyWidget.yScale[0])<= 50:
-                PrettyWidget.yScale[0] -= 50
+    #            for ax in f.get_axes():
+    #                ax.set_xlabel("RADI (arcsec)")
+    #                ax.set_ylabel(par + "( "+unitMeas+ " )")
+    #            a.plot(parVals['RADI'], parVals[par],'--bo')
+                self.plot()
+    #            print("mMotion:",mMotion," yScale:",yScale)
+                if (self.yScale[1] - self.mMotion[0])<=50:
+                    self.yScale[1] += 50
+                elif (self.mMotion[0] - self.yScale[0])<= 50:
+                    self.yScale[0] -= 50
 #                a.set_xlim(xScale[0],xScale[1])            
 #                a.set_ylim(yScale[0],yScale[1])
     
@@ -323,9 +302,8 @@ def animate(i):
         
 def main():
     app = QtGui.QApplication(sys.argv)
-#    app.geometry("1280x720")
     w = PrettyWidget()
-    ani=animation.FuncAnimation(PrettyWidget.figure, animate, interval=500)
+    ani=animation.FuncAnimation(PrettyWidget.figure, PrettyWidget.animate, interval=500)
     app.exec_()
 
 
@@ -333,3 +311,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+print ("this is a trial")
