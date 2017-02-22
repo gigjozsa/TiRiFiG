@@ -294,11 +294,16 @@ class PrettyWidget(QtGui.QWidget):
             axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
         ax = self.figure.add_subplot(111)
         ax.clear()
+        ax.set_xlim(self.xScale[0],self.xScale[1])            
+        ax.set_ylim(self.yScale[0],self.yScale[1])
         ax.plot(self.parVals['RADI'], self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
         ax.set_title('Plot')
         ax.set_xticks(self.parVals['RADI'])
         self.canvas.draw()
         self.key = "No"
+        
+        
+        
         
         
     def plotFunc(self):
@@ -317,6 +322,7 @@ class PrettyWidget(QtGui.QWidget):
             ax.set_xticks(self.parVals['RADI'])
             self.canvas.draw()
             self.key = "No"
+            
         
         for j in range(len(self.parVals['RADI'])):
 #            print("mPress[0]: ",self.mPress[0])
@@ -330,6 +336,9 @@ class PrettyWidget(QtGui.QWidget):
                     axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
                 ax = self.figure.add_subplot(111)
                 ax.clear()
+                ax.set_xlim(self.xScale[0],self.xScale[1])            
+                ax.set_ylim(self.yScale[0],self.yScale[1])
+                print (self.xScale, self.yScale)
                 ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
                 ax.set_title('Plot')
                 ax.set_xticks(self.parVals['RADI'])
@@ -340,8 +349,8 @@ class PrettyWidget(QtGui.QWidget):
                 elif (self.mMotion[0] - self.yScale[0])<= 50:
                    self.yScale[0] -= 50
                 
-#                ax.set_xlim(self.xScale[0],self.xScale[1])            
-#                ax.set_ylim(self.yScale[0],self.yScale[1])
+                ax.set_xlim(self.xScale[0],self.xScale[1])            
+                ax.set_ylim(self.yScale[0],self.yScale[1])
 
     
         
