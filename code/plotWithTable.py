@@ -10,7 +10,7 @@ well.
 """
 
 
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 import os, sys
 import numpy as np
 from math import ceil 
@@ -74,6 +74,8 @@ class PrettyWidget(QtGui.QWidget):
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
 #        self.canvas = FigureCanvas(self.f)
+        self.canvas.setFocusPolicy( QtCore.Qt.ClickFocus )
+        self.canvas.setFocus()
         
         self.canvas.mpl_connect('button_press_event', self.getClick)
         self.canvas.mpl_connect('button_release_event', self.getRelease)
@@ -101,7 +103,7 @@ class PrettyWidget(QtGui.QWidget):
         #Plot Button
         btn2 = QtGui.QPushButton('Plot', self)
         btn2.resize(btn2.sizeHint())    
-        btn2.clicked.connect(self.plotFunc)
+        btn2.clicked.connect(self.firstPlot) 
         grid.addWidget(btn2, 0,1)
     
     
@@ -155,7 +157,6 @@ class PrettyWidget(QtGui.QWidget):
         if not(self.data==None):
             self.VROT = self.getParameter("VROT",self.data)
             self.RADI = self.getParameter("RADI",self.data)
-            self.parVals = {'RADI':self.RADI[:],'VROT':self.VROT[:]}
                 
             self.numPrecisionY = self.precisionPAR
             self.numPrecisionX = self.precisionRADI
@@ -170,8 +171,11 @@ class PrettyWidget(QtGui.QWidget):
                 for i in range(int(diff)):
                     self.VROT.append(self.VROT[lastIndexItem])
             
+            self.parVals = {'RADI':self.RADI[:],'VROT':self.VROT[:]}
+            
             self.historyList.clear()
             self.historyList[self.par] = [self.VROT[:]]
+            
 
             if (max(self.RADI)-min(self.RADI))<=100:
                 self.xScale = [int(ceil(-2*max(self.RADI))),int(ceil(2*max(self.RADI)))]                           
@@ -182,6 +186,7 @@ class PrettyWidget(QtGui.QWidget):
                 self.yScale = [int(ceil(-2*max(self.VROT))),int(ceil(2*max(self.VROT)))]
             else:
                 self.yScale = [int(ceil(min(self.VROT)-0.1*(max(self.VROT)-min(self.VROT)))),int(ceil(max(self.VROT)+0.1*(max(self.VROT)-min(self.VROT))))]
+            
 
         
     def getParameter(self,sKey,data):
@@ -228,27 +233,43 @@ class PrettyWidget(QtGui.QWidget):
         
     def getClick(self,event):
         
-        if event.xdata == None:
-            pass
-        else:
+#        print("click x-y values before if statement")
+#        print("xdata: ",event.xdata,", ydata: ",event.ydata)
+#        print("x: ",event.x,", y: ",event.y)
+#        print("button: ",event.button)
+#        print("click: ",event)
+            
+        
+        if (event.button == 1) and not(event.xdata == None):
             self.mPress[0]=round(float(event.xdata),self.numPrecisionY)
-            self.mRelease[0]="None"
-#            self.plotFunc()
+#            print("mPress after clicking: ",self.mPress[0])
+            self.mRelease[0]=None
+#            print("\n")
+#            print ("radi: ",event.xdata)
+#            print ("vrot: ",event.ydata)
+            
             
     def getRelease(self,event):
-             
+        
+#        print("release x-y values before if statement")
+#        print("xdata: ",event.xdata,", ydata: ",event.ydata)
+#        print("x: ",event.x,", y: ",event.y)
+#        print("button: ",event.button)
+#        print("release: ",event)
+#        print("release x-y values before if statement")
+#        print("x: ",event.xdata,", y: ",event.ydata)
         if not(event.ydata == None):
+#            print("release: ",event.ydata)
             self.mRelease[0]=round(float(event.ydata),self.numPrecisionY)
-            if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
-                self.historyList[self.par].append(self.parVals[self.par][:])
-                self.mPress[0]=-5+min(self.RADI)
-                self.mRelease[0]="None"
+        if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
+            self.historyList[self.par].append(self.parVals[self.par][:])
+        self.mPress[0]=None
+#                self.mRelease[0]=None
+
 
     def getMotion(self,event):
         
-        if event.ydata == None:
-            pass
-        else:
+        if (event.button == 1) and not(event.ydata == None):
             self.mMotion[0]=round(float(event.ydata),self.numPrecisionY)
             self.plotFunc()
     
@@ -264,35 +285,63 @@ class PrettyWidget(QtGui.QWidget):
             self.key = "Yes"
             self.plotFunc()
     
+    def firstPlot(self):
+               
+        self.key = "Yes"
+#            plt.cla()
+        for axes in self.figure.get_axes():
+            axes.set_xlabel("RADI (arcsec)")
+            axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
+        ax = self.figure.add_subplot(111)
+        ax.clear()
+        ax.plot(self.parVals['RADI'], self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
+        ax.set_title('Plot')
+        ax.set_xticks(self.parVals['RADI'])
+        self.canvas.draw()
+        self.key = "No"
+        
+        
     def plotFunc(self):
-
+  
+        
         if self.key=="Yes":
-            plt.cla()
+#            plt.cla()
             for axes in self.figure.get_axes():
                 axes.set_xlabel("RADI (arcsec)")
                 axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
             ax = self.figure.add_subplot(111)
+            ax.clear()
             ax.plot(self.parVals['RADI'], self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
+#            print ("parVal: ",self.parVals['RADI'])
             ax.set_title('Plot')
+            ax.set_xticks(self.parVals['RADI'])
             self.canvas.draw()
             self.key = "No"
         
         for j in range(len(self.parVals['RADI'])):
-            if (self.mPress[0] < (self.parVals['RADI'][j])+3) and (self.mPress[0] > (self.parVals['RADI'][j])-3) and (self.mRelease[0]=="None"):
+#            print("mPress[0]: ",self.mPress[0])
+#            print("parVals['RADI'][j]): ",self.parVals['RADI'][j])
+            if (self.mPress[0] < (self.parVals['RADI'][j])+3) and (self.mPress[0] > (self.parVals['RADI'][j])-3) and (self.mRelease[0]==None):
                 self.parVals[self.par][j] = self.mMotion[0]
-                plt.cla()
+#                print ("parVal: ",self.parVals['RADI'])
+#                plt.cla()
                 for axes in self.figure.get_axes():
                     axes.set_xlabel("RADI (arcsec)")
                     axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
                 ax = self.figure.add_subplot(111)
+                ax.clear()
                 ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
                 ax.set_title('Plot')
+                ax.set_xticks(self.parVals['RADI'])
                 self.canvas.draw()
                 self.key = "No"
                 if (self.yScale[1] - self.mMotion[0])<=50:
                     self.yScale[1] += 50
                 elif (self.mMotion[0] - self.yScale[0])<= 50:
-                   self. yScale[0] -= 50
+                   self.yScale[0] -= 50
+                
+#                ax.set_xlim(self.xScale[0],self.xScale[1])            
+#                ax.set_ylim(self.yScale[0],self.yScale[1])
 
     
         
