@@ -63,12 +63,37 @@ class PrettyWidget(QtGui.QWidget):
 #        self.setGeometry(600, 300, 1000, 600)
 #        self.setFixedSize(1450,250)
         self.center()
-        self.setWindowTitle('Revision on Plots, Tables and File Browser')     
+        self.setWindowTitle('TiRiFiG')     
         
         #Grid Layout
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
-                    
+        
+       
+        self.exitAction = QtGui.QAction("&Exit", self)
+#        self.exitAction.setShortcut("Ctrl+Q")
+        self.exitAction.setStatusTip('Leave the app')
+        self.exitAction.triggered.connect(self.close_application)
+
+        self.openFile = QtGui.QAction("&Open File", self)
+#        self.openFile.setShortcut("Ctrl+O")
+        self.openFile.setStatusTip('Load .def file to be plotted')
+        self.openFile.triggered.connect(self.openDef)
+        
+        self.saveChanges = QtGui.QAction("&Save", self)
+#        openEditor.setShortcut("Ctrl+S")
+        self.saveChanges.setStatusTip('Save changes to .def file')
+        self.saveChanges.triggered.connect(self.saveAll)
+
+#        self.QtGui.statusBar(self)
+
+        self.mainMenu = QtGui.QMenuBar(self)
+        
+        self.fileMenu = self.mainMenu.addMenu('&File')
+        self.fileMenu.addAction(self.openFile)
+        self.fileMenu.addAction(self.exitAction)
+        self.fileMenu.addAction(self.saveChanges)       
+        
         #Canvas and Toolbar
         self.figure = plt.figure() 
         self.canvas = FigureCanvas(self.figure)
@@ -106,6 +131,14 @@ class PrettyWidget(QtGui.QWidget):
         btn2.clicked.connect(self.firstPlot) 
         grid.addWidget(btn2, 0,1)
     
+    def close_application():
+        choice = QtGui.QMessageBox.question('Exit!',
+                                            "Are you sure?",
+                                            QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
+        if choice == QtGui.QMessageBox.Yes:
+            sys.exit()
+        else:
+            pass
     
     def getData(self):
         """
@@ -114,10 +147,10 @@ class PrettyWidget(QtGui.QWidget):
         The 
         """
     
-        filePath = QtGui.QFileDialog.getOpenFileName(self,"Open .def File", "/home",".def Files (*.def)")
+        self.fileName = QtGui.QFileDialog.getOpenFileName(self,"Open .def File", "/home",".def Files (*.def)")
         
-        if (not(filePath==None)) and (not len(filePath)==0):
-            with open(filePath) as f:
+        if (not(self.fileName==None)) and (not len(self.fileName)==0):
+            with open(self.fileName) as f:
                 data = f.readlines()
             f.close()
         else:
@@ -304,8 +337,6 @@ class PrettyWidget(QtGui.QWidget):
         
         
         
-        
-        
     def plotFunc(self):
   
         
@@ -319,7 +350,7 @@ class PrettyWidget(QtGui.QWidget):
             ax.plot(self.parVals['RADI'], self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
 #            print ("parVal: ",self.parVals['RADI'])
             ax.set_title('Plot')
-            ax.set_xticks(self.parVals['RADI'])
+#            ax.set_xticks(self.parVals['RADI'])
             self.canvas.draw()
             self.key = "No"
             
@@ -338,10 +369,10 @@ class PrettyWidget(QtGui.QWidget):
                 ax.clear()
                 ax.set_xlim(self.xScale[0],self.xScale[1])            
                 ax.set_ylim(self.yScale[0],self.yScale[1])
-                print (self.xScale, self.yScale)
+#                print (self.xScale, self.yScale)
                 ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
                 ax.set_title('Plot')
-                ax.set_xticks(self.parVals['RADI'])
+#                ax.set_xticks(self.parVals['RADI'])
                 self.canvas.draw()
                 self.key = "No"
                 if (self.yScale[1] - self.mMotion[0])<=50:
@@ -352,6 +383,56 @@ class PrettyWidget(QtGui.QWidget):
                 ax.set_xlim(self.xScale[0],self.xScale[1])            
                 ax.set_ylim(self.yScale[0],self.yScale[1])
 
+    
+    def saveFile(self,newVals,sKey):  
+
+        
+        if sKey == 'RADI':
+            r = self.numPrecisionX
+        else:
+            r = self.numPrecisionY
+            
+        #get the new values and format it as [0 20 30 40 50...]
+        txt =""
+        for i in range(len(newVals)):
+            txt = txt+" " +'{0:.{1}f}'.format(newVals[i], r)
+
+            #txt = txt+" " + str(newVals[i])
+
+        tmpFile=[]
+        with open(self.fileName,'a') as f:
+            status = False
+            for i in self.data:
+                lineVals = i.split("=")
+                if (len(lineVals)>1):
+                    lineVals[0]=''.join(lineVals[0].split())
+                    if (sKey == lineVals[0]):
+                        txt = "    "+sKey+"="+txt+"\n"
+                        tmpFile.append(txt)
+                        status = True
+                    else:
+                        tmpFile.append(i)
+                else:
+                    tmpFile.append(i)
+     
+            
+            if not(status):
+                tmpFile.append("# "+self.par+" parameter in "+self.unitMeas+"\n")
+                txt = "    "+sKey+"="+txt+"\n"
+                tmpFile.append(txt)
+                
+            f.seek(0)
+            f.truncate()
+            for i in tmpFile:
+                f.write(i)
+            
+            self.data = tmpFile[:]
+            f.close()
+            
+    def saveAll(self):
+        for i in self.parVals:
+            self.saveFile(self.parVals[i],i)
+        
     
         
 def main():
