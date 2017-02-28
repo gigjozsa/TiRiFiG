@@ -7,11 +7,56 @@ Created on Sat Feb  4 22:49:38 2017
 This script here is the GUI (PyQt) implementation of TiRiFiC. As of now the code has been
 written in Python 3. Future considerations would be made to have it run on Python 2.7 as
 well.
+
+functions:
+    main 
+
+classes:
+    PrettyWidget:
+        Class variables:
+            key
+            precisionPAR
+            precisionRADI
+            numPrecisionY
+            numPrecision
+            NUR
+            data
+            VROT
+            RADI
+            historyList
+            xScale
+            yScale
+            fileName
+            par
+            unitMeas
+            mPress
+            parVals
+            
+        Instance variables
+        
+        Methods:
+            __init__
+            iniUI
+            close_application
+            getData
+            numPrecision
+            openDef
+            getParameter
+            center
+            getClick
+            getRelease
+            getMotion
+            keyPressed
+            firstPlot
+            plotFunc
+            saveFile
+            saveAll
 """
 
 
 from PyQt4 import QtGui, QtCore
-import os, sys
+import os
+import sys
 import numpy as np
 from math import ceil 
 import matplotlib.pyplot as plt
@@ -131,7 +176,16 @@ class PrettyWidget(QtGui.QWidget):
         btn2.clicked.connect(self.firstPlot) 
         grid.addWidget(btn2, 0,1)
     
-    def close_application():
+    def close_application(self):
+        """Exit application
+        
+        Keyword arguments:
+        self -- this is the main window being displayed
+                i.e. the current instance of the PrettyWidget class
+        
+        User action will be confirmed by popping up a yes/no prompt
+        """
+        #pop up message 
         choice = QtGui.QMessageBox.question('Exit!',
                                             "Are you sure?",
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
@@ -141,35 +195,58 @@ class PrettyWidget(QtGui.QWidget):
             pass
     
     def getData(self):
-        """
-        This function opens a file to read data
+        """Loads data from specified .def file in open dialog box
         
-        The 
+        Keyword arguments:
+        self -- this is the main window being displayed
+                i.e. the current instance of the PrettyWidget class
+        
+        Returns:
+        data:list
+        The text found in each line of the opened file
+        
+        data will be a none type variable if the fileName is invalid or no file is chosen
         """
-    
+        
+        #stores file path of .def to fileName variable after user selects file in open dialog box
         self.fileName = QtGui.QFileDialog.getOpenFileName(self,"Open .def File", "/home",".def Files (*.def)")
         
+        #assign texts of read lines to data variable if fileName is exists, else assign None
         if (not(self.fileName==None)) and (not len(self.fileName)==0):
             with open(self.fileName) as f:
                 data = f.readlines()
             f.close()
         else:
-            if (len(self.data)>0) or (not(self.data==None)):
-                pass
-            else:
+            if (len(self.data)==0) or (self.data==None):
                 data = None
         return data
         
     def numPrecision(self,sKey,data):
+        """Determines and sets floating point precision 
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        sKey (str) --   parameter search key
+        data (list) --  list of values of type string e.g. x = ["20.3","55.0003","15.25","12.71717"]
+        
+        Returns:
+        None
+        
+        Determines the highest floating point precision of data points
+        and re-assigns parameter precision class variables (precisionPAR & precisionRADI) 
+        as such
+        """
         
         decPoints = []
     
         for i in range(len(data)):
             val = data[i].split(".")
-            #make sure val has two elements
+            
+            #check val has decimal & fractional part and append length of numbers of fractional part
             if len(val)==2:
                 decPoints.append(len(val[1]))
         
+        #assign greatest precision in decPoints to class variables handling precision
         if not(sKey == "RADI"):
             if len(decPoints)==0:
                 self.precisionPAR = 0
@@ -183,17 +260,31 @@ class PrettyWidget(QtGui.QWidget):
 
         
     def openDef(self):
+        """Opens data, gets parameters values, sets precision and sets scale
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        
+        Returns:
+        None
+        
+        Makes function calls to getData and getParameter functions, assigns values to dictionaries
+        parVals and historyList and defines the x-scale and y-scale for plotting
+        on viewgraph
+        """  
 
         self.data = self.getData()
         
         
-        if not(self.data==None):
+        if (not(self.data==None) or len(self.data)>0):
             self.VROT = self.getParameter("VROT",self.data)
             self.RADI = self.getParameter("RADI",self.data)
-                
-            self.numPrecisionY = self.precisionPAR
-            self.numPrecisionX = self.precisionRADI
-            #ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
+               
+            """this line may not be necessary"""
+#            self.numPrecisionY = self.precisionPAR
+#            self.numPrecisionX = self.precisionRADI
+            
+#           ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
             self.NUR = self.getParameter("NUR",self.data)
             diff = self.NUR[0]-len(self.VROT)
             lastIndexItem = len(self.VROT)-1
@@ -204,12 +295,12 @@ class PrettyWidget(QtGui.QWidget):
                 for i in range(int(diff)):
                     self.VROT.append(self.VROT[lastIndexItem])
             
-            self.parVals = {'RADI':self.RADI[:],'VROT':self.VROT[:]}
             
+            self.parVals = {'RADI':self.RADI[:],'VROT':self.VROT[:]}
             self.historyList.clear()
             self.historyList[self.par] = [self.VROT[:]]
             
-
+            #defining the x and y scale for plotting
             if (max(self.RADI)-min(self.RADI))<=100:
                 self.xScale = [int(ceil(-2*max(self.RADI))),int(ceil(2*max(self.RADI)))]                           
             else:
@@ -223,18 +314,33 @@ class PrettyWidget(QtGui.QWidget):
 
         
     def getParameter(self,sKey,data):
+        """Fetches data points of specified parameter in search key
         
-#        global numPrecision, precisionPAR, precisionRADI, NUR
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        sKey (str) --   parameter search key
+        data (list) --  list containing texts of each line loaded from .def file
+        
+        Returns:
+        parVal:list
+        The values appearing after the '=' symbol of the parameter specified in sKey.
+        If search key isnt found, zero values are returned
+        
+        The data points for the specific parameter value are located and converted 
+        from string to float data types for plotting and other data manipulation
+        """
+        #search through fetched data for values of "PAR =" or "PAR = " or "PAR=" or "PAR= "
         status = False
         for i in data:
             lineVals = i.split("=")
             if (len(lineVals)>1):
-                lineVals[0]=''.join(lineVals[0].split())
+                lineVals[0] = ''.join(lineVals[0].split())
                 if (sKey == lineVals[0]):
                     parVal = lineVals[1].split()
                     status = True
                     break
-               
+                
+        #if found, obtain floating point precision and ensure all numbers have the same accuracy    
         if status:
             if not(sKey=="NUR"):
                 self.numPrecision(sKey,parVal)
@@ -258,70 +364,128 @@ class PrettyWidget(QtGui.QWidget):
         
         
     def center(self):
+        """Centers the window
         
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        
+        Returns:
+        None
+        
+        With information from the user's desktop, the screen resolution is  gotten
+        and the center point is figured out for which the window is placed.
+        """
         qr = self.frameGeometry()
         cp = QtGui.QDesktopWidget().availableGeometry().center()
         qr.moveCenter(cp)
         self.move(qr.topLeft())
         
     def getClick(self,event):
+        """Left mouse button is pressed
         
-#        print("click x-y values before if statement")
-#        print("xdata: ",event.xdata,", ydata: ",event.ydata)
-#        print("x: ",event.x,", y: ",event.y)
-#        print("button: ",event.button)
-#        print("click: ",event)
-            
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        event --        event type
         
+        Returns:
+        None
+        
+        The xData is captured when the left mouse button is clicked on the canvas
+        """     
+        #on left click in figure canvas, captures mouse press and assign None to 
+        #mouse release
         if (event.button == 1) and not(event.xdata == None):
-            self.mPress[0]=round(float(event.xdata),self.numPrecisionY)
-#            print("mPress after clicking: ",self.mPress[0])
+            self.mPress[0]=round(float(event.xdata),self.precisionPAR)
             self.mRelease[0]=None
-#            print("\n")
-#            print ("radi: ",event.xdata)
-#            print ("vrot: ",event.ydata)
             
             
-    def getRelease(self,event):
+    def getRelease(self,event):   
+        """Left mouse button is released
         
-#        print("release x-y values before if statement")
-#        print("xdata: ",event.xdata,", ydata: ",event.ydata)
-#        print("x: ",event.x,", y: ",event.y)
-#        print("button: ",event.button)
-#        print("release: ",event)
-#        print("release x-y values before if statement")
-#        print("x: ",event.xdata,", y: ",event.ydata)
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        event --        event type
+        
+        Returns:
+        None
+        
+        The xData is captured when the left mouse button is released on the canvas.
+        The new data point is added to the history and mouse pressed is assigned None
+        """
+        #re-look at this logic --seems to be a flaw somewhere
         if not(event.ydata == None):
-#            print("release: ",event.ydata)
             self.mRelease[0]=round(float(event.ydata),self.numPrecisionY)
+            
+        #append the new point to the history if the last item in history differs
+        #from the new point
         if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
             self.historyList[self.par].append(self.parVals[self.par][:])
+            
         self.mPress[0]=None
 #                self.mRelease[0]=None
 
 
     def getMotion(self,event):
+        """Mouse is in motion
         
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        event --        event type
+        
+        Returns:
+        None
+        
+        The xData is captured when the left mouse button is released on the canvas.
+        The new data point is added to the history and mouse pressed is assigned None
+        """
+        #whilst the left mouse button is being clicked and mouse pointer hasnt (why not use mPress=None instead of event.button = 1)
+        #moved out of the figure canvas, capture the VROT (y-value) during mouse
+        #movement and call re-draw graph
         if (event.button == 1) and not(event.ydata == None):
             self.mMotion[0]=round(float(event.ydata),self.numPrecisionY)
             self.plotFunc()
     
     def keyPressed(self,event):
+        """Key is pressed
         
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        event --        event type
+        
+        Returns:
+        None
+        
+        Deletes the last item in the history list when "Ctrl+z" is pressed and
+        re-draws graph
+        """
         if event.key == "ctrl+z" or event.key == "ctrl+Z":
-            print ("undo triggered")
+            #history list musn't be empty
             if len(self.historyList[self.par])>1:
                 self.historyList[self.par].pop()
-            tempHistoryList = self.historyList[self.par][len(self.historyList[self.par])-1]
-            for i in range(len(self.parVals[self.par])):
-                self.parVals[self.par][i]=round(tempHistoryList[i],self.numPrecisionY) 
-            self.key = "Yes"
-            self.plotFunc()
+                tempHistoryList = self.historyList[self.par][len(self.historyList[self.par])-1]
+                #re-assign parVal to hold last list values in history list dictionary
+                #and re-draw graph
+                for i in range(len(self.parVals[self.par])):
+                    self.parVals[self.par][i]=round(tempHistoryList[i],self.numPrecisionY) 
+                self.key = "Yes"
+                self.plotFunc()
+            else:
+                #pop up a messageBox saying history list is exhausted
+                print("history is empty")
+            
     
     def firstPlot(self):
-               
+        """Plots data from file
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        
+        Returns:
+        None
+        
+        Produces view graph from historyList
+        """
         self.key = "Yes"
-#            plt.cla()
         for axes in self.figure.get_axes():
             axes.set_xlabel("RADI (arcsec)")
             axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
@@ -338,30 +502,34 @@ class PrettyWidget(QtGui.QWidget):
         
         
     def plotFunc(self):
-  
+        """Plots data from file
         
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        
+        Returns:
+        None
+        
+        Produces view graph from historyList or parVals
+        """
+        #why dont you just call firstPlot function instead of typing the same thing again
         if self.key=="Yes":
-#            plt.cla()
             for axes in self.figure.get_axes():
                 axes.set_xlabel("RADI (arcsec)")
                 axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
             ax = self.figure.add_subplot(111)
             ax.clear()
             ax.plot(self.parVals['RADI'], self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
-#            print ("parVal: ",self.parVals['RADI'])
             ax.set_title('Plot')
 #            ax.set_xticks(self.parVals['RADI'])
             self.canvas.draw()
             self.key = "No"
             
-        
+        #this re-plots the graph as long as the mouse is in motion and the right
+        #data point is clicked
         for j in range(len(self.parVals['RADI'])):
-#            print("mPress[0]: ",self.mPress[0])
-#            print("parVals['RADI'][j]): ",self.parVals['RADI'][j])
             if (self.mPress[0] < (self.parVals['RADI'][j])+3) and (self.mPress[0] > (self.parVals['RADI'][j])-3) and (self.mRelease[0]==None):
                 self.parVals[self.par][j] = self.mMotion[0]
-#                print ("parVal: ",self.parVals['RADI'])
-#                plt.cla()
                 for axes in self.figure.get_axes():
                     axes.set_xlabel("RADI (arcsec)")
                     axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
@@ -369,7 +537,6 @@ class PrettyWidget(QtGui.QWidget):
                 ax.clear()
                 ax.set_xlim(self.xScale[0],self.xScale[1])            
                 ax.set_ylim(self.yScale[0],self.yScale[1])
-#                print (self.xScale, self.yScale)
                 ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
                 ax.set_title('Plot')
 #                ax.set_xticks(self.parVals['RADI'])
@@ -385,7 +552,19 @@ class PrettyWidget(QtGui.QWidget):
 
     
     def saveFile(self,newVals,sKey):  
-
+        """Save changes made to data points to .def file per specified parameter
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        newVals (list) --  list containing new values
+        sKey (str) --   parameter search key
+        
+        Returns:
+        None
+        
+        The .def file would be re-opened and updated per the new values that
+        are contained in the parVal* variable 
+        """
         
         if sKey == 'RADI':
             r = self.numPrecisionX
@@ -430,6 +609,18 @@ class PrettyWidget(QtGui.QWidget):
             f.close()
             
     def saveAll(self):
+        """Save changes made to data point to .def file for all parameters
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of 
+        the PrettyWidget class
+        
+        Returns:
+        None
+        
+        The saveFile function is called and updated with the current values being 
+        held by parameters in the view graph.
+        """
         for i in self.parVals:
             self.saveFile(self.parVals[i],i)
         
