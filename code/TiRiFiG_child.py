@@ -1,59 +1,10 @@
-    # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-Created on Sat Feb  4 22:49:38 2017
+Created on Tue Apr 18 10:43:03 2017
 
-@author: samuel
-
-This script here is the GUI (PyQt) implementation of TiRiFiC. As of now the code has been
-written in Python 3. Future considerations would be made to have it run on Python 2.7 as
-well.
-
-functions:
-    main 
-
-classes:
-    PrettyWidget:
-        Class variables:
-            key
-            precisionPAR
-            precisionRADI
-            numPrecisionY
-            numPrecision
-            NUR
-            data
-            VROT
-            RADI
-            historyList
-            xScale
-            yScale
-            fileName
-            par
-            unitMeas
-            mPress
-            parVals
-            
-        Instance variables
-        
-        Methods:
-            __init__
-            iniUI
-            close_application
-            getData
-            numPrecision
-            openDef
-            getParameter
-            center
-            getClick
-            getRelease
-            getMotion
-            keyPressed
-            firstPlot
-            plotFunc
-            saveFile
-            saveAll
+@author: Samuel
 """
-
-
+#libraries
 from PyQt4 import QtGui, QtCore
 import os
 import sys
@@ -63,24 +14,13 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 
-class PrettyWidget(QtGui.QWidget):
-    """
-    This class ...
-    
-    
-    Parameters
-    ----------
-    arg1: <dataType>
-        description of arg1
-        
-    Variables
-    ---------
-    
-        
-    
-    """
+#classes
+
+class GraphWidget(QtGui.QWidget):
     
     key = "Yes"
+    scaleChange = "No"
+    choice = "Beyond Viewgraph"
     precisionPAR = 0
     precisionRADI = 0
     numPrecisionY = 0
@@ -96,48 +36,18 @@ class PrettyWidget(QtGui.QWidget):
     par = 'VROT'
     unitMeas = 'km/s'
     mPress=[-5+min(RADI)];mRelease=['None'];mMotion=[-5+min(RADI)]
+    yVal = 0
     parVals = {'RADI':RADI[:],'VROT':VROT[:]}
-        
+    
+    
+    
     def __init__(self):
-        super(PrettyWidget, self).__init__()
-        self.initUI()
-        
-    def initUI(self):
-        
-        self.setMinimumSize(1280, 720)
-#        self.setGeometry(600, 300, 1000, 600)
-#        self.setFixedSize(1450,250)
-        self.center()
-        self.setWindowTitle('TiRiFiG')     
-        
+        super(GraphWidget, self).__init__()
         #Grid Layout
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
-        
-       
-        self.exitAction = QtGui.QAction("&Exit", self)
-#        self.exitAction.setShortcut("Ctrl+Q")
-        self.exitAction.setStatusTip('Leave the app')
-        self.exitAction.triggered.connect(self.close_application)
-
-        self.openFile = QtGui.QAction("&Open File", self)
-#        self.openFile.setShortcut("Ctrl+O")
-        self.openFile.setStatusTip('Load .def file to be plotted')
-        self.openFile.triggered.connect(self.openDef)
-        
-        self.saveChanges = QtGui.QAction("&Save", self)
-#        openEditor.setShortcut("Ctrl+S")
-        self.saveChanges.setStatusTip('Save changes to .def file')
-        self.saveChanges.triggered.connect(self.saveAll)
-
-#        self.QtGui.statusBar(self)
-
-        self.mainMenu = QtGui.QMenuBar(self)
-        
-        self.fileMenu = self.mainMenu.addMenu('&File')
-        self.fileMenu.addAction(self.openFile)
-        self.fileMenu.addAction(self.exitAction)
-        self.fileMenu.addAction(self.saveChanges)       
+        self.setMinimumSize(1280,720)
+        self.center()
         
         #Canvas and Toolbar
         self.figure = plt.figure() 
@@ -152,46 +62,55 @@ class PrettyWidget(QtGui.QWidget):
         self.canvas.mpl_connect('motion_notify_event', self.getMotion)
         self.canvas.mpl_connect('key_press_event', self.keyPressed)
         
-#        self.toolbar = NavigationToolbar(self.canvas, self)
-#        toolbar.update()
         grid.addWidget(self.toolbar, 1,0,1,2)
         grid.addWidget(self.canvas, 2,0,1,2)
-        
 
-        #Empty 5x5 Table
-#        self.table = QtGui.QTableWidget(self)
-#        self.table.setRowCount(1)
-#        self.table.setColumnCount(9)
-#        grid.addWidget(self.table, 3,0,1,2)
-        
         #Import def Button
         btn1 = QtGui.QPushButton('Import Def', self)
-        btn1.resize(btn1.sizeHint()) 
+        btn1.minimumSize()
         btn1.clicked.connect(self.openDef)
         grid.addWidget(btn1, 0,0)
         
-        #Plot Button
+#        Plot Button
         btn2 = QtGui.QPushButton('Plot', self)
         btn2.resize(btn2.sizeHint())    
         btn2.clicked.connect(self.firstPlot) 
         grid.addWidget(btn2, 0,1)
+            
+    def center(self):
+        """Centers the window
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the mainWindow class
+        
+        Returns:
+        None
+        
+        With information from the user's desktop, the screen resolution is  gotten
+        and the center point is figured out for which the window is placed.
+        """
+        qr = self.frameGeometry()
+        cp = QtGui.QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
     
     def close_application(self):
         """Exit application
         
         Keyword arguments:
         self -- this is the main window being displayed
-                i.e. the current instance of the PrettyWidget class
+                i.e. the current instance of the mainWindow class
         
         User action will be confirmed by popping up a yes/no prompt
         """
-        #pop up message 
-        choice = QtGui.QMessageBox.question('Exit!',
+        #message box for action confirmation
+        choice = QtGui.QMessageBox.question(self,'Exit Application',
                                             "Are you sure?",
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if choice == QtGui.QMessageBox.Yes:
-            sys.exit()
+            sys.exit(0)
         else:
+            print ("Yes wasnt detected")
             pass
     
     def getData(self):
@@ -199,7 +118,7 @@ class PrettyWidget(QtGui.QWidget):
         
         Keyword arguments:
         self -- this is the main window being displayed
-                i.e. the current instance of the PrettyWidget class
+                i.e. the current instance of the mainWindow class
         
         Returns:
         data:list
@@ -209,7 +128,7 @@ class PrettyWidget(QtGui.QWidget):
         """
         
         #stores file path of .def to fileName variable after user selects file in open dialog box
-        self.fileName = QtGui.QFileDialog.getOpenFileName(self,"Open .def File", "/home",".def Files (*.def)")
+        self.fileName = QtGui.QFileDialog.getOpenFileName(self,"Open .def File", os.getcwd(),".def Files (*.def)")
         
         #assign texts of read lines to data variable if fileName is exists, else assign None
         if (not(self.fileName==None)) and (not len(self.fileName)==0):
@@ -225,7 +144,7 @@ class PrettyWidget(QtGui.QWidget):
         """Determines and sets floating point precision 
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         sKey (str) --   parameter search key
         data (list) --  list of values of type string e.g. x = ["20.3","55.0003","15.25","12.71717"]
         
@@ -263,7 +182,7 @@ class PrettyWidget(QtGui.QWidget):
         """Opens data, gets parameters values, sets precision and sets scale
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         
         Returns:
         None
@@ -275,8 +194,9 @@ class PrettyWidget(QtGui.QWidget):
 
         self.data = self.getData()
         
-        
-        if (not(self.data==None) or len(self.data)>0):
+        if self.data == None:
+            pass
+        elif (not(self.data==None) or len(self.data)>0):
             self.VROT = self.getParameter("VROT",self.data)
             self.RADI = self.getParameter("RADI",self.data)
                
@@ -310,14 +230,13 @@ class PrettyWidget(QtGui.QWidget):
                 self.yScale = [int(ceil(-2*max(self.VROT))),int(ceil(2*max(self.VROT)))]
             else:
                 self.yScale = [int(ceil(min(self.VROT)-0.1*(max(self.VROT)-min(self.VROT)))),int(ceil(max(self.VROT)+0.1*(max(self.VROT)-min(self.VROT))))]
-            
 
         
     def getParameter(self,sKey,data):
         """Fetches data points of specified parameter in search key
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         sKey (str) --   parameter search key
         data (list) --  list containing texts of each line loaded from .def file
         
@@ -361,30 +280,13 @@ class PrettyWidget(QtGui.QWidget):
                 zeroValues.append(0.0)
             self.precisionPAR = 1
             return zeroValues
-        
-        
-    def center(self):
-        """Centers the window
-        
-        Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
-        
-        Returns:
-        None
-        
-        With information from the user's desktop, the screen resolution is  gotten
-        and the center point is figured out for which the window is placed.
-        """
-        qr = self.frameGeometry()
-        cp = QtGui.QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
+            
         
     def getClick(self,event):
         """Left mouse button is pressed
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         event --        event type
         
         Returns:
@@ -396,14 +298,22 @@ class PrettyWidget(QtGui.QWidget):
         #mouse release
         if (event.button == 1) and not(event.xdata == None):
             self.mPress[0]=round(float(event.xdata),self.precisionPAR)
+            self.yVal = round(float(event.ydata),self.numPrecisionY)
             self.mRelease[0]=None
-            
+        
+        """if self.plot == "bingo":
+            print("It worked")
+            print (self.xScale)
+            print(self.yScale)
+            self.plotFunc()
+            self.plot = "No"
+            """
             
     def getRelease(self,event):   
         """Left mouse button is released
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         event --        event type
         
         Returns:
@@ -415,7 +325,7 @@ class PrettyWidget(QtGui.QWidget):
         #re-look at this logic --seems to be a flaw somewhere
         if not(event.ydata == None):
             self.mRelease[0]=round(float(event.ydata),self.numPrecisionY)
-            
+        
         #append the new point to the history if the last item in history differs
         #from the new point
         if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
@@ -429,7 +339,7 @@ class PrettyWidget(QtGui.QWidget):
         """Mouse is in motion
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         event --        event type
         
         Returns:
@@ -449,7 +359,7 @@ class PrettyWidget(QtGui.QWidget):
         """Key is pressed
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         event --        event type
         
         Returns:
@@ -466,36 +376,59 @@ class PrettyWidget(QtGui.QWidget):
                 #re-assign parVal to hold last list values in history list dictionary
                 #and re-draw graph
                 for i in range(len(self.parVals[self.par])):
-                    self.parVals[self.par][i]=round(tempHistoryList[i],self.numPrecisionY) 
+                    self.parVals[self.par][i]=round(tempHistoryList[i],self.numPrecisionY)
+
+                if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
+                    self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
+                else:
+                    self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+                
                 self.key = "Yes"
                 self.plotFunc()
             else:
                 #pop up a messageBox saying history list is exhausted
-                print("history is empty")
-            
-    
+#                print("history is empty")
+                self.showInformation()
+       
+         
+    def showInformation(self):
+        """Show the information message
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the mainWindow class
+        
+        Returns:
+        None
+        
+        Displays a messagebox that informs user there's no previous action to be undone
+        """
+        QtGui.QMessageBox.information(self, "Information", "History list is exhausted")
+        
+        
     def firstPlot(self):
         """Plots data from file
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         
         Returns:
         None
         
         Produces view graph from historyList
         """
-        self.key = "Yes"
-        for axes in self.figure.get_axes():
-            axes.set_xlabel("RADI (arcsec)")
-            axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
+        
+
         ax = self.figure.add_subplot(111)
         ax.clear()
         ax.set_xlim(self.xScale[0],self.xScale[1])            
         ax.set_ylim(self.yScale[0],self.yScale[1])
+        for axes in self.figure.get_axes():
+            axes.set_xlabel("RADI (arcsec)")
+            axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
         ax.plot(self.parVals['RADI'], self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
         ax.set_title('Plot')
         ax.set_xticks(self.parVals['RADI'])
+#        ax.set_yticks(np.arange(min(self.parVals[self.par]),max(self.parVals[self.par])+1,500))
         self.canvas.draw()
         self.key = "No"
         
@@ -505,57 +438,74 @@ class PrettyWidget(QtGui.QWidget):
         """Plots data from file
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         
         Returns:
         None
         
         Produces view graph from historyList or parVals
         """
-        #why dont you just call firstPlot function instead of typing the same thing again
-        if self.key=="Yes":
+        if self.scaleChange == "Yes":
+            ax = self.figure.add_subplot(111)
+            ax.clear()
+            ax.set_xlim(self.xScale[0],self.xScale[1])
+            ax.set_ylim(self.yScale[0],self.yScale[1])
             for axes in self.figure.get_axes():
                 axes.set_xlabel("RADI (arcsec)")
                 axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
-            ax = self.figure.add_subplot(111)
-            ax.clear()
-            ax.plot(self.parVals['RADI'], self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
+            ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
             ax.set_title('Plot')
-#            ax.set_xticks(self.parVals['RADI'])
-            self.canvas.draw()
-            self.key = "No"
+            #ax.set_xticks(self.parVals['RADI'])
+            self.canvas.draw() 
+            self.scaleChange = "No"
+        
+        if self.key=="Yes":
+            self.firstPlot()
             
         #this re-plots the graph as long as the mouse is in motion and the right
         #data point is clicked
-        for j in range(len(self.parVals['RADI'])):
-            if (self.mPress[0] < (self.parVals['RADI'][j])+3) and (self.mPress[0] > (self.parVals['RADI'][j])-3) and (self.mRelease[0]==None):
-                self.parVals[self.par][j] = self.mMotion[0]
-                for axes in self.figure.get_axes():
-                    axes.set_xlabel("RADI (arcsec)")
-                    axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
-                ax = self.figure.add_subplot(111)
-                ax.clear()
-                ax.set_xlim(self.xScale[0],self.xScale[1])            
-                ax.set_ylim(self.yScale[0],self.yScale[1])
-                ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
-                ax.set_title('Plot')
-#                ax.set_xticks(self.parVals['RADI'])
-                self.canvas.draw()
-                self.key = "No"
-                if (self.yScale[1] - self.mMotion[0])<=50:
-                    self.yScale[1] += 50
-                elif (self.mMotion[0] - self.yScale[0])<= 50:
-                   self.yScale[0] -= 50
-                
-                ax.set_xlim(self.xScale[0],self.xScale[1])            
-                ax.set_ylim(self.yScale[0],self.yScale[1])
+        else:
+            for j in range(len(self.parVals['RADI'])):
+                if (self.mPress[0] < (self.parVals['RADI'][j])+3) and (self.mPress[0] > (self.parVals['RADI'][j])-3) and (self.mRelease[0]==None):
+                    self.parVals[self.par][j] = self.mMotion[0]
+                    ax = self.figure.add_subplot(111)
+                    ax.clear()
+                    ax.set_xlim(self.xScale[0],self.xScale[1])            
+#                    print (self.choice)
+                    if self.choice == "Beyond Viewgraph":
+                        if (self.yScale[1] - self.mMotion[0])<=200:
+                            self.yScale[1] += 100
+                        elif (self.mMotion[0] - self.yScale[0])<= 200:
+                            self.yScale[0] -= 100
+                        
+                    elif self.choice == "Free":
+                        if self.mMotion[0]>self.yVal:
+                            if ((self.yScale[1]-max(self.parVals[self.par]))<=300) and ((max(self.parVals[self.par])-self.mMotion[0])<=20):
+                                self.yScale[1] += 200
+                            elif abs(self.yScale[0] - min(self.parVals[self.par]))>=300:
+                                self.yScale[0] += 200
+                        elif self.mMotion[0]<self.yVal:
+                            if ((min(self.parVals[self.par])-self.yScale[0])<=300) and ((min(self.parVals[self.par])-self.mMotion[0])<=20):
+                                self.yScale[0] -= 200
+                            elif abs(self.yScale[1] - max(self.parVals[self.par]))>=300:
+                                self.yScale[1] -= 200
+                    print ("after koraa: ",self.yScale)
+                    ax.set_ylim(self.yScale[0],self.yScale[1])
+                    for axes in self.figure.get_axes():
+                        axes.set_xlabel("RADI (arcsec)")
+                        axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
+                    ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
+                    ax.set_title('Plot')
+                  #  ax.set_xticks(self.parVals['RADI'])
+#                    ax.set_yticks(np.arange(min(self.parVals[self.par]),max(self.parVals[self.par])+1,200))
+                    self.canvas.draw()                
 
     
     def saveFile(self,newVals,sKey):  
         """Save changes made to data points to .def file per specified parameter
         
         Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the PrettyWidget class
+        self --         main window being displayed i.e. the current instance of the mainWindow class
         newVals (list) --  list containing new values
         sKey (str) --   parameter search key
         
@@ -577,7 +527,7 @@ class PrettyWidget(QtGui.QWidget):
             txt = txt+" " +'{0:.{1}f}'.format(newVals[i], r)
 
             #txt = txt+" " + str(newVals[i])
-
+        #put this block of code in a try except block
         tmpFile=[]
         with open(self.fileName,'a') as f:
             status = False
@@ -613,23 +563,381 @@ class PrettyWidget(QtGui.QWidget):
         
         Keyword arguments:
         self --         main window being displayed i.e. the current instance of 
-        the PrettyWidget class
+        the mainWindow class
         
         Returns:
         None
         
         The saveFile function is called and updated with the current values being 
-        held by parameters in the view graph.
+        held by parameters.
         """
         for i in self.parVals:
             self.saveFile(self.parVals[i],i)
+    
+    def saveMessage(self):
+        """Displays the information about save action
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the mainWindow class
+        
+        Returns:
+        None
+        
+        Displays a messagebox that informs user that changes have been successfully written to the .def file
+        """
+        QtGui.QMessageBox.information(self, "Information", "Changes successfully written to file")
+        
+    def saveAs(self,fileName,newVals,sKey):  
+        """Creates a new .def file with current data points on viewgraph
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the mainWindow class
+        fileName --     filePath where new file should be saved to
+        newVals (list) --  list containing new values
+        sKey (str) --   parameter search key
+        
+        Returns:
+        None
+        
+        A new .def file would be created and placed in the specified file path
+        """
+        
+        if sKey == 'RADI':
+            r = self.numPrecisionX
+        else:
+            r = self.numPrecisionY
+            
+        #get the new values and format it as [0 20 30 40 50...]
+        txt =""
+        for i in range(len(newVals)):
+            txt = txt+" " +'{0:.{1}f}'.format(newVals[i], r)
+
+            #txt = txt+" " + str(newVals[i])
+
+        tmpFile=[]
+        
+        
+        if not(fileName==None):
+            with open(fileName,'a') as f:
+                status = False
+                for i in self.data:
+                    lineVals = i.split("=")
+                    if (len(lineVals)>1):
+                        lineVals[0]=''.join(lineVals[0].split())
+                        if (sKey == lineVals[0]):
+                            txt = "    "+sKey+"="+txt+"\n"
+                            tmpFile.append(txt)
+                            status = True
+                        else:
+                            tmpFile.append(i)
+                    else:
+                        tmpFile.append(i)
+         
+                
+                if not(status):
+                    tmpFile.append("# "+self.par+" parameter in "+self.unitMeas+"\n")
+                    txt = "    "+sKey+"="+txt+"\n"
+                    tmpFile.append(txt)
+                    
+                f.seek(0)
+                f.truncate()
+                for i in tmpFile:
+                    f.write(i)
+                
+                self.data = tmpFile[:]
+                f.close()
+    
+    def saveAsAll(self):
+        """Creates a new .def file for all parameters in current .def file opened
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of 
+        the mainWindow class
+        
+        Returns:
+        None
+        
+        The saveAs function is called and updated with the current values being 
+        held by parameters.
+        """
+        fileName = QtGui.QFileDialog.getSaveFileName(self,"Save .def file as ",os.getcwd(),
+                                                    ".def Files (*.def)")
+        
+        for i in self.parVals:
+            self.saveAs(fileName,self.parVals[i],i)
+    
+    def startTiriFiC(self):
+        """Start TiRiFiC
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of 
+        the mainWindow class
+        
+        Returns:
+        None
+        
+        Calls the os.system and opens terminal to start TiRiFiC
+        """
+        os.system("gnome-terminal -e 'bash -c \"/home/samuel/software/TiRiFiC/tirific_2.3.4/bin/tirific deffile = "+self.fileName+"; exec bash\"'")
+    
+    def openEditor(self):
+        text,ok = QtGui.QInputDialog.getText(self,'Text Editor Input Dialog', 
+                                            'Enter text editor:')
+        
+        if ok:
+            if len(text)>0:
+                programName = str(text)
+                os.system("gnome-terminal -e 'bash -c \""+programName+" "+self.fileName+"; exec bash\"'")
+            else:
+                os.system("gnome-terminal -e 'bash -c \"gedit "+self.fileName+"; exec bash\"'")
+    
+
+class SMWindow(QtGui.QWidget):
+#    xScale = [0,0]
+#    yScale = [0,0]
+    
+    def __init__(self):
+        super(SMWindow, self).__init__()
+        
+
+        self.xMin = QtGui.QLineEdit()
+        self.xMin.minimumSize()
+        self.xMin.setPlaceholderText("RADI min")        
+        self.xMax = QtGui.QLineEdit()
+        self.xMax.minimumSize()
+        self.xMax.setPlaceholderText("RADI max")
+       
+        self.yMin = QtGui.QLineEdit()
+        self.yMin.minimumSize()
+        self.yMin.setPlaceholderText(GraphWidget.par+" min") 
+        self.yMax = QtGui.QLineEdit()
+        self.yMax.minimumSize()
+        self.yMax.setPlaceholderText(GraphWidget.par+" max")
+    
+    
+        self.fbox = QtGui.QFormLayout(self)
+       
+        self.fbox.addRow(self.xMin)
+        self.fbox.addRow(self.xMax)
+        self.fbox.addRow(self.yMin)
+        self.fbox.addRow(self.yMax)
+    
+        self.hbox = QtGui.QHBoxLayout()
+    
+        self.radioFree = QtGui.QRadioButton("Free")
+       # self.radioFree.clicked.connect(self.getOptF)
+        self.radioViewG = QtGui.QRadioButton("Beyond Viewgraph")
+        #self.radioViewG.clicked.connect(self.getOptV)
+        
+        self.hbox.addWidget(self.radioFree)
+        self.hbox.addWidget(self.radioViewG)
+        self.hbox.addStretch()
+        self.fbox.addRow(QtGui.QLabel("Scale Behaviour"),self.hbox)
+       
+        self.btnUpdate = QtGui.QPushButton('Update', self)
+       # self.btnUpdate.clicked.connect(self.updateScale)
+        self.btnUpdate.minimumSize()
+        self.btnCancel = QtGui.QPushButton('Cancel', self)
+        #self.btnCancel.clicked.connect(self.close)
+        self.btnCancel.minimumSize()
+        self.fbox.addRow(self.btnUpdate,self.btnCancel) 
+    
+        self.setLayout(self.fbox)
+        self.setFocus()
+        self.setWindowTitle("Scale Manager")
+#        self.setMinimumSize(1280, 720)
+        self.minimumSizeHint()
+        
+
+class ParamSpec(QtGui.QWidget):
+    
+    def __init__(self):
+        super(ParamSpec, self).__init__()
+
+        self.parameter = QtGui.QLineEdit()
+        self.parameter.minimumSize()
+        self.parameter.setPlaceholderText("Parameter")        
+        self.unitMeasurement = QtGui.QLineEdit()
+        self.unitMeasurement.minimumSize()
+        self.unitMeasurement.setPlaceholderText("Unit Measurement")
+      
+    
+    
+        self.fbox = QtGui.QFormLayout(self)
+       
+        self.fbox.addRow(self.parameter)
+        self.fbox.addRow(self.unitMeasurement)
         
     
         
+       
+        self.btnOK = QtGui.QPushButton('OK', self)
+        
+        self.btnOK.minimumSize()
+        self.btnCancel = QtGui.QPushButton('Cancel', self)
+        
+        self.btnCancel.minimumSize()
+        self.fbox.addRow(self.btnOK,self.btnCancel) 
+    
+        self.setLayout(self.fbox)
+       
+        self.setWindowTitle("Parameter Definition")
+#        self.setMinimumSize(1280, 720)
+        self.minimumSizeHint()
+        self.setFocus()
+
+class mainWindow(QtGui.QMainWindow):
+    
+   def __init__(self):
+        super(mainWindow, self).__init__()
+        self.initUI()
+    
+   def initUI(self):
+        
+        self.gw = GraphWidget()
+        self.setCentralWidget(self.gw)
+        self.sm = SMWindow()
+        self.ps = ParamSpec()
+        self.setMinimumSize(1280, 720)
+#        self.setGeometry(600, 300, 1000, 600)
+#        self.setFixedSize(1450,250)
+        self.createActions()
+        self.createMenus()
+        self.setWindowTitle('TiRiFiG') 
+        self.gw.center()
+       
+   def createActions(self):
+        self.exitAction = QtGui.QAction("&Exit", self)
+#        self.exitAction.setShortcut("Ctrl+Q")
+        self.exitAction.setStatusTip('Leave the app')
+        self.exitAction.triggered.connect(self.gw.close_application)
+
+        self.openFile = QtGui.QAction("&Open File", self)
+#        self.openFile.setShortcut("Ctrl+O")
+        self.openFile.setStatusTip('Load .def file to be plotted')
+        self.openFile.triggered.connect(self.gw.openDef)
+        
+        self.saveChanges = QtGui.QAction("&Save", self)
+#        openEditor.setShortcut("Ctrl+S")
+        self.saveChanges.setStatusTip('Save changes to .def file')
+        self.saveChanges.triggered.connect(self.gw.saveAll)
+        
+        self.saveAs = QtGui.QAction("&Save as...",self)
+        self.saveAs.setStatusTip('Create another .def file with current paramater values')
+        self.saveAs.triggered.connect(self.gw.saveAsAll)
+        
+        self.openTextEditor = QtGui.QAction("&Open Text Editor...",self)
+        self.openTextEditor.setStatusTip('View the current open .def file in preferred text editor')
+        self.openTextEditor.triggered.connect(self.gw.openEditor) # function yet to be written
+        
+        self.startTF = QtGui.QAction("&Start TiriFiC",self)
+        self.startTF.setStatusTip('Starts TiRiFiC from terminal')
+        self.startTF.triggered.connect(self.gw.startTiriFiC)
+        
+        self.scaleMan = QtGui.QAction("&Scale Manager",self)
+        self.scaleMan.setStatusTip('Manages behaviour of scale and min and max values')
+        self.scaleMan.triggered.connect(self.sm.show)
+        
+        self.paraDef = QtGui.QAction("&Parameter Definition",self)
+        self.paraDef.setStatusTip('Determines which parameter is plotted on the y-axis')
+        self.paraDef.triggered.connect(self.ps.show)
+        
+#        self.QtGui.statusBar(self)
+        
+        self.sm.radioFree.clicked.connect(self.getOptF)
+        self.sm.radioViewG.clicked.connect(self.getOptV)
+        self.sm.btnUpdate.clicked.connect(self.updateScale)
+        self.sm.btnCancel.clicked.connect(self.sm.close)
+        self.ps.btnOK.clicked.connect(self.paramDef)
+        self.ps.btnCancel.clicked.connect(self.close)
+
+   def createMenus(self):
+        mainMenu = self.menuBar()
+        
+        self.fileMenu = mainMenu.addMenu('&File')
+        self.fileMenu.addAction(self.openFile)
+        self.fileMenu.addAction(self.saveChanges)
+        self.fileMenu.addAction(self.saveAs)
+        self.fileMenu.addAction(self.exitAction)
+        
+#        editMenu = mainMenu.addMenu('&Edit')
+       
+        self.runMenu = mainMenu.addMenu('&Run')
+        self.runMenu.addAction(self.openTextEditor)
+        self.runMenu.addAction(self.startTF)
+        
+        self.prefMenu = mainMenu.addMenu('&Preferences')
+        self.prefMenu.addAction(self.scaleMan)
+        self.prefMenu.addAction(self.paraDef)
+
+   def getOptF(self):
+        self.gw.choice = "Free"
+    
+   def getOptV(self):
+        self.gw.choice = "Beyond Viewgraph"
+        
+   def updateScale(self):
+
+        if len(self.sm.yMin.text())>0:
+            self.gw.yScale[0] = int(ceil(float(self.sm.yMin.text())))
+            
+        if len(self.sm.yMax.text())>0:
+            self.gw.yScale[1] = int(ceil(float(self.sm.yMax.text())))
+            
+        if len(self.sm.xMin.text())>0:
+            self.gw.xScale[0] = int(ceil(float(self.sm.xMin.text())))
+            
+        if len(self.sm.xMax.text())>0:
+            self.gw.xScale[1] = int(ceil(float(self.sm.xMax.text())))
+            
+        self.gw.scaleChange = "Yes"       
+        self.gw.plotFunc()      
+        self.sm.close()        
+        
+   def paramDef(self):
+       
+       if len(self.ps.parameter.text())>0 and not(str(self.ps.parameter) == self.gw.par):
+           self.gw.par = str(self.ps.parameter.text())
+           self.gw.unitMeas = str(self.ps.unitMeasurement.text())
+           
+           #this evaluates to e.g. VROT = [20,30,40,50]
+           exec(self.gw.par + "= self.gw.getParameter(self.gw.par,self.gw.data)") in globals(), locals()
+           
+           self.gw.numPrecisionY = self.gw.numPrecision(self.gw.par,self.gw.data)
+           
+           #this evaluates to the content of the variable in par; e.g. tmp = VROT[:]
+           tmp = eval(self.gw.par)
+           
+           diff = self.gw.NUR[0]-len(tmp)
+           lastIndexItem = len(tmp)-1
+           if diff == self.gw.NUR[0]:
+               for i in range(int(diff)):
+                   eval(self.gw.par).append(0.0)
+           elif diff > 0 and diff < self.gw.NUR[0]:
+               for i in range(int(diff)):
+                   eval(self.gw.par).append(tmp[lastIndexItem])
+            
+           self.gw.parVals[self.gw.par] = eval(self.gw.par)
+            
+           self.gw.historyList[self.gw.par] = [self.gw.parVals[self.gw.par][:]]
+            
+            #print (historyList)
+           if max(self.gw.parVals[self.gw.par])<=0:
+               self.gw.yScale = [-50,50]
+           elif (max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par]))<=100:
+               self.gw.yScale = [int(ceil(-2*max(self.gw.parVals[self.gw.par]))),int(ceil(2*max(self.gw.parVals[self.gw.par])))]
+           else:
+               self.gw.yScale = [int(ceil(min(self.gw.parVals[self.gw.par])-0.1*(max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par])))),int(ceil(max(self.gw.parVals[self.gw.par])+0.1*(max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par]))))]
+            
+           self.gw.key = "Yes"
+           self.gw.plotFunc()
+           self.ps.close()
+
+
 def main():
     app = QtGui.QApplication(sys.argv)
 #    app.geometry("1280x720")
-    GUI = PrettyWidget()
+    GUI = mainWindow()
     GUI.show()
     app.exec_()
 
