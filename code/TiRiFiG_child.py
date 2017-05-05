@@ -5,7 +5,8 @@ Created on Tue Apr 18 10:43:03 2017
 @author: Samuel
 """
 #libraries
-from PyQt4 import QtGui, QtCore
+from PyQt4 import QtGui#, QtCore
+"""
 import os
 import sys
 import numpy as np
@@ -13,6 +14,7 @@ from math import ceil
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+"""
 
 #classes
 
@@ -297,8 +299,8 @@ class GraphWidget(QtGui.QWidget):
         #on left click in figure canvas, captures mouse press and assign None to 
         #mouse release
         if (event.button == 1) and not(event.xdata == None):
-            self.mPress[0]=round(float(event.xdata),self.precisionPAR)
-            self.yVal = round(float(event.ydata),self.numPrecisionY)
+            self.mPress[0]=round(float(event.xdata),self.precisionRADI)
+            self.yVal = round(float(event.ydata),self.precisionPAR)
             self.mRelease[0]=None
         
         """if self.plot == "bingo":
@@ -324,7 +326,7 @@ class GraphWidget(QtGui.QWidget):
         """
         #re-look at this logic --seems to be a flaw somewhere
         if not(event.ydata == None):
-            self.mRelease[0]=round(float(event.ydata),self.numPrecisionY)
+            self.mRelease[0]=round(float(event.ydata),self.precisionPAR)
         
         #append the new point to the history if the last item in history differs
         #from the new point
@@ -352,7 +354,7 @@ class GraphWidget(QtGui.QWidget):
         #moved out of the figure canvas, capture the VROT (y-value) during mouse
         #movement and call re-draw graph
         if (event.button == 1) and not(event.ydata == None):
-            self.mMotion[0]=round(float(event.ydata),self.numPrecisionY)
+            self.mMotion[0]=round(float(event.ydata),self.precisionPAR)
             self.plotFunc()
     
     def keyPressed(self,event):
@@ -376,7 +378,7 @@ class GraphWidget(QtGui.QWidget):
                 #re-assign parVal to hold last list values in history list dictionary
                 #and re-draw graph
                 for i in range(len(self.parVals[self.par])):
-                    self.parVals[self.par][i]=round(tempHistoryList[i],self.numPrecisionY)
+                    self.parVals[self.par][i]=round(tempHistoryList[i],self.precisionPAR)
 
                 if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
                     self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
@@ -517,9 +519,9 @@ class GraphWidget(QtGui.QWidget):
         """
         
         if sKey == 'RADI':
-            r = self.numPrecisionX
+            r = self.precisionRADI
         else:
-            r = self.numPrecisionY
+            r = self.precisionPAR
             
         #get the new values and format it as [0 20 30 40 50...]
         txt =""
@@ -603,9 +605,9 @@ class GraphWidget(QtGui.QWidget):
         """
         
         if sKey == 'RADI':
-            r = self.numPrecisionX
+            r = self.precisionRADI
         else:
-            r = self.numPrecisionY
+            r = self.precisionRADI
             
         #get the new values and format it as [0 20 30 40 50...]
         txt =""
@@ -899,14 +901,21 @@ class mainWindow(QtGui.QMainWindow):
        if len(self.ps.parameter.text())>0 and not(str(self.ps.parameter) == self.gw.par):
            self.gw.par = str(self.ps.parameter.text())
            self.gw.unitMeas = str(self.ps.unitMeasurement.text())
-           
+          
            #this evaluates to e.g. VROT = [20,30,40,50]
            exec(self.gw.par + "= self.gw.getParameter(self.gw.par,self.gw.data)") in globals(), locals()
+
            
-           self.gw.numPrecisionY = self.gw.numPrecision(self.gw.par,self.gw.data)
+           #self.gw.numPrecisionY = 
+           strTemp = eval(self.gw.par)[:]
+           for i in range(len(strTemp)):
+               strTemp[i] = str(strTemp[i])
+          
+           
+           self.gw.numPrecision(self.gw.par,strTemp)
            
            #this evaluates to the content of the variable in par; e.g. tmp = VROT[:]
-           tmp = eval(self.gw.par)
+           tmp = eval(self.gw.par)[:]
            
            diff = self.gw.NUR[0]-len(tmp)
            lastIndexItem = len(tmp)-1
@@ -917,7 +926,7 @@ class mainWindow(QtGui.QMainWindow):
                for i in range(int(diff)):
                    eval(self.gw.par).append(tmp[lastIndexItem])
             
-           self.gw.parVals[self.gw.par] = eval(self.gw.par)
+           self.gw.parVals[self.gw.par] = eval(self.gw.par)[:]
             
            self.gw.historyList[self.gw.par] = [self.gw.parVals[self.gw.par][:]]
             
