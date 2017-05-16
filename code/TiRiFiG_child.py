@@ -5,16 +5,18 @@ Created on Tue Apr 18 10:43:03 2017
 @author: Samuel
 """
 #libraries
-from PyQt4 import QtGui#, QtCore
-"""
+from PyQt4 import QtGui, QtCore
 import os
+from subprocess import Popen as run
 import sys
 import numpy as np
 from math import ceil 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
-"""
+from matplotlib import style
+style.use("ggplot")
+
 
 #classes
 
@@ -179,6 +181,56 @@ class GraphWidget(QtGui.QWidget):
             else:
                 self.precisionRADI = max(decPoints)
 
+
+    def getParameter(self,sKey,data):
+        """Fetches data points of specified parameter in search key
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the mainWindow class
+        sKey (str) --   parameter search key
+        data (list) --  list containing texts of each line loaded from .def file
+        
+        Returns:
+        parVal:list
+        The values appearing after the '=' symbol of the parameter specified in sKey.
+        If search key isnt found, zero values are returned
+        
+        The data points for the specific parameter value are located and converted 
+        from string to float data types for plotting and other data manipulation
+        """
+        #search through fetched data for values of "PAR =" or "PAR = " or "PAR=" or "PAR= "
+        status = False
+        for i in data:
+            lineVals = i.split("=")
+            if (len(lineVals)>1):
+                lineVals[0] = ''.join(lineVals[0].split())
+                if (sKey == lineVals[0]):
+                    parVal = lineVals[1].split()
+                    status = True
+                    break
+                
+        #if found, obtain floating point precision and ensure all numbers have the same accuracy    
+        if status:
+            if not(sKey=="NUR"):
+                self.numPrecision(sKey,parVal)
+            
+            if not((sKey == "RADI") or (sKey == "NUR")):
+                precision = self.precisionPAR
+            elif not((sKey == "VROT") or (sKey == "NUR")):
+                precision = self.precisionRADI
+            else:
+                precision = 0
+                
+            for i in range(len(parVal)):
+                parVal[i]=round(float(parVal[i]),precision)
+            return parVal   
+        else:
+            zeroValues = []
+            for i in range(int(self.NUR[0])):
+                zeroValues.append(0.0)
+            self.precisionPAR = 1
+            return zeroValues
+            
         
     def openDef(self):
         """Opens data, gets parameters values, sets precision and sets scale
@@ -232,57 +284,7 @@ class GraphWidget(QtGui.QWidget):
                 self.yScale = [int(ceil(-2*max(self.VROT))),int(ceil(2*max(self.VROT)))]
             else:
                 self.yScale = [int(ceil(min(self.VROT)-0.1*(max(self.VROT)-min(self.VROT)))),int(ceil(max(self.VROT)+0.1*(max(self.VROT)-min(self.VROT))))]
-
-        
-    def getParameter(self,sKey,data):
-        """Fetches data points of specified parameter in search key
-        
-        Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the mainWindow class
-        sKey (str) --   parameter search key
-        data (list) --  list containing texts of each line loaded from .def file
-        
-        Returns:
-        parVal:list
-        The values appearing after the '=' symbol of the parameter specified in sKey.
-        If search key isnt found, zero values are returned
-        
-        The data points for the specific parameter value are located and converted 
-        from string to float data types for plotting and other data manipulation
-        """
-        #search through fetched data for values of "PAR =" or "PAR = " or "PAR=" or "PAR= "
-        status = False
-        for i in data:
-            lineVals = i.split("=")
-            if (len(lineVals)>1):
-                lineVals[0] = ''.join(lineVals[0].split())
-                if (sKey == lineVals[0]):
-                    parVal = lineVals[1].split()
-                    status = True
-                    break
                 
-        #if found, obtain floating point precision and ensure all numbers have the same accuracy    
-        if status:
-            if not(sKey=="NUR"):
-                self.numPrecision(sKey,parVal)
-            
-            if not((sKey == "RADI") or (sKey == "NUR")):
-                precision = self.precisionPAR
-            elif not((sKey == "VROT") or (sKey == "NUR")):
-                precision = self.precisionRADI
-            else:
-                precision = 0
-                
-            for i in range(len(parVal)):
-                parVal[i]=round(float(parVal[i]),precision)
-            return parVal   
-        else:
-            zeroValues = []
-            for i in range(int(self.NUR[0])):
-                zeroValues.append(0.0)
-            self.precisionPAR = 1
-            return zeroValues
-            
         
     def getClick(self,event):
         """Left mouse button is pressed
@@ -681,17 +683,68 @@ class GraphWidget(QtGui.QWidget):
         Calls the os.system and opens terminal to start TiRiFiC
         """
         os.system("gnome-terminal -e 'bash -c \"/home/samuel/software/TiRiFiC/tirific_2.3.4/bin/tirific deffile = "+self.fileName+"; exec bash\"'")
-    
+        
+    def slotChangeData(self,fileName):
+        with open(fileName) as f:
+            self.data = f.readlines()
+        f.close()
+        
+
+        self.VROT = self.getParameter("VROT",self.data)
+        self.RADI = self.getParameter("RADI",self.data)
+           
+        """this line may not be necessary"""
+#            self.numPrecisionY = self.precisionPAR
+#            self.numPrecisionX = self.precisionRADI
+        
+#           ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
+        self.NUR = self.getParameter("NUR",self.data)
+        diff = self.NUR[0]-len(self.VROT)
+        lastIndexItem = len(self.VROT)-1
+        if diff == self.NUR[0]:
+            for i in range(int(diff)):
+                self.VROT.append(0.0)
+        elif diff > 0 and diff < self.NUR[0]:
+            for i in range(int(diff)):
+                self.VROT.append(self.VROT[lastIndexItem])
+        
+        
+        self.parVals = {'RADI':self.RADI[:],'VROT':self.VROT[:]}
+        self.historyList.clear()
+        self.historyList[self.par] = [self.VROT[:]]
+        
+        #defining the x and y scale for plotting
+        if (max(self.RADI)-min(self.RADI))<=100:
+            self.xScale = [int(ceil(-2*max(self.RADI))),int(ceil(2*max(self.RADI)))]                           
+        else:
+            self.xScale = [int(ceil(min(self.RADI)-0.1*(max(self.RADI)-min(self.RADI)))),int(ceil(max(self.RADI)+0.1*(max(self.RADI)-min(self.RADI))))]                            
+
+        if (max(self.VROT)-min(self.VROT))<=100:
+            self.yScale = [int(ceil(-2*max(self.VROT))),int(ceil(2*max(self.VROT)))]
+        else:
+            self.yScale = [int(ceil(min(self.VROT)-0.1*(max(self.VROT)-min(self.VROT)))),int(ceil(max(self.VROT)+0.1*(max(self.VROT)-min(self.VROT))))]
+        self.firstPlot()
+        
     def openEditor(self):
         text,ok = QtGui.QInputDialog.getText(self,'Text Editor Input Dialog', 
                                             'Enter text editor:')
-        
+                                            
         if ok:
+            fileName = os.getcwd()
+            fileName += "/tmpDeffile.def"
+            for i in self.parVals:
+                self.saveAs(fileName,self.parVals[i],i)
+
+            self.fileWatcher = QtCore.QFileSystemWatcher()
+            self.fileWatcher.addPath(fileName)
+            self.fileWatcher.fileChanged.connect(self.slotChangeData) 
             if len(text)>0:
                 programName = str(text)
-                os.system("gnome-terminal -e 'bash -c \""+programName+" "+self.fileName+"; exec bash\"'")
+#                os.system("gnome-terminal -e 'bash -c \""+programName+" "+fileName+"; exec bash\"'")
+                run([programName,fileName])
             else:
-                os.system("gnome-terminal -e 'bash -c \"gedit "+self.fileName+"; exec bash\"'")
+#                os.system("gnome-terminal -e 'bash -c \"gedit "+fileName+"; exec bash\"'")
+                run(["gedit",fileName])
     
 
 class SMWindow(QtGui.QWidget):
@@ -845,6 +898,14 @@ class mainWindow(QtGui.QMainWindow):
         self.paraDef.triggered.connect(self.ps.show)
         
 #        self.QtGui.statusBar(self)
+#        path = os.getcwd() + '/tmpDeffile.def'
+#        self.fileWatcher = QtCore.QFileSystemWatcher()
+#        self.fileWatcher.addPath(path)    
+##        QtCore.QObject.connect(fileWatcher, QtCore.SIGNAL("fileChanged(QString)"),QtCore.SLOT("GUI.gw.slotChangeData(path)"))
+##        self.fileWatcher.connect(QtCore.SIGNAL("fileChanged"),self.gw.slotChangeData(path))
+#        if path != None:
+#            self.fileWatcher.fileChanged.connect(self.gw.slotChangeData(path)) 
+        
         
         self.sm.radioFree.clicked.connect(self.getOptF)
         self.sm.radioViewG.clicked.connect(self.getOptV)
@@ -946,10 +1007,12 @@ class mainWindow(QtGui.QMainWindow):
 def main():
     app = QtGui.QApplication(sys.argv)
 #    app.geometry("1280x720")
-    GUI = mainWindow()
-    GUI.show()
-    app.exec_()
 
+    GUI = mainWindow()
+        
+    GUI.show()
+    
+    app.exec_()
 
 
 if __name__ == '__main__':
