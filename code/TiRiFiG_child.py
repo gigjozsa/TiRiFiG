@@ -1,12 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Apr 18 10:43:03 2017
 
-@author: Samuel
-"""
 #libraries
 from PyQt4 import QtGui, QtCore
-import os
+import os, time
 from subprocess import Popen as run
 import sys
 import numpy as np
@@ -25,11 +20,12 @@ class GraphWidget(QtGui.QWidget):
     key = "Yes"
     scaleChange = "No"
     choice = "Beyond Viewgraph"
-    precisionPAR = 0
-    precisionRADI = 0
+    precisionPAR = 0 # may not be necessary
+    precisionRADI = 0 # may not be necessary
+    INSET = 'None'
     numPrecisionY = 0
     numPrecisionX = 0
-    NUR = [0]
+    NUR = 0#shouldnt this just be an integer
     data = []
     VROT = []
     RADI = [0]
@@ -39,9 +35,10 @@ class GraphWidget(QtGui.QWidget):
     fileName = None
     par = 'VROT'
     unitMeas = 'km/s'
-    mPress=[-5+min(RADI)];mRelease=['None'];mMotion=[-5+min(RADI)]
+    mPress=[-5+min(RADI)];mRelease=['None'];mMotion=[-5+min(RADI)]########
     yVal = 0
-    parVals = {'RADI':RADI[:],'VROT':VROT[:]}
+    parVals = {}
+    fileStat = 0
     
     
     
@@ -108,13 +105,17 @@ class GraphWidget(QtGui.QWidget):
         User action will be confirmed by popping up a yes/no prompt
         """
         #message box for action confirmation
+        fileName = os.getcwd()
+        fileName += "/tmpDeffile.def"
         choice = QtGui.QMessageBox.question(self,'Exit Application',
                                             "Are you sure?",
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if choice == QtGui.QMessageBox.Yes:
+            if os.path.isfile(fileName):
+                os.remove(fileName)
             sys.exit(0)
         else:
-            print ("Yes wasnt detected")
+            
             pass
     
     def getData(self):
@@ -143,46 +144,19 @@ class GraphWidget(QtGui.QWidget):
             if (len(self.data)==0) or (self.data==None):
                 data = None
         return data
-        
-    def numPrecision(self,sKey,data):
-        """Determines and sets floating point precision 
-        
-        Keyword arguments:
-        self --         main window being displayed i.e. the current instance of the mainWindow class
-        sKey (str) --   parameter search key
-        data (list) --  list of values of type string e.g. x = ["20.3","55.0003","15.25","12.71717"]
-        
-        Returns:
-        None
-        
-        Determines the highest floating point precision of data points
-        and re-assigns parameter precision class variables (precisionPAR & precisionRADI) 
-        as such
-        """
-        
-        decPoints = []
-    
-        for i in range(len(data)):
-            val = data[i].split(".")
-            
-            #check val has decimal & fractional part and append length of numbers of fractional part
-            if len(val)==2:
-                decPoints.append(len(val[1]))
-        
-        #assign greatest precision in decPoints to class variables handling precision
-        if not(sKey == "RADI"):
-            if len(decPoints)==0:
-                self.precisionPAR = 0
-            else:
-                self.precisionPAR = max(decPoints)
-        else:
-            if len(decPoints)==0:
-                self.precisionRADI = 0
-            else:
-                self.precisionRADI = max(decPoints)
 
-
-    def getParameter(self,sKey,data):
+    def strType(self,var):
+        try:
+            if int(var) == float(var):
+                return 'int'
+        except:
+            try:
+                float(var)
+            	return 'float'
+            except:
+                return 'str'
+             
+    def getParameter(self,data):
         """Fetches data points of specified parameter in search key
         
         Keyword arguments:
@@ -199,37 +173,64 @@ class GraphWidget(QtGui.QWidget):
         from string to float data types for plotting and other data manipulation
         """
         #search through fetched data for values of "PAR =" or "PAR = " or "PAR=" or "PAR= "
-        status = False
+
         for i in data:
             lineVals = i.split("=")
             if (len(lineVals)>1):
                 lineVals[0] = ''.join(lineVals[0].split())
-                if (sKey == lineVals[0]):
-                    parVal = lineVals[1].split()
-                    status = True
-                    break
+                #if (sKey == lineVals[0]):
+                parVal = lineVals[1].split()
+
                 
-        #if found, obtain floating point precision and ensure all numbers have the same accuracy    
-        if status:
-            if not(sKey=="NUR"):
-                self.numPrecision(sKey,parVal)
+                if lineVals[0].upper() == "INSET":
+                    self.INSET = ''.join(lineVals[1].split())
+                
+                if lineVals[0]=="NUR":
+
+                    self.NUR = int(parVal[0])
+
+                else:
+
+                    if (len(parVal)>0) and not(self.strType(parVal[0]) == 'str') and not(self.strType(parVal[-1]) == 'str') and not(self.strType(parVal[len(parVal)/2]) == 'str'):
+                        precision = self.numPrecision(parVal)
+                        for i in range(len(parVal)):
+                            parVal[i]=round(float(parVal[i]),precision)
+                        self.parVals[lineVals[0]] =  parVal[:] 
+
+
+    def numPrecision(self,data):
+        """Determines and sets floating point precision 
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the mainWindow class
+        data (list) --  list of values of type string e.g. x = ["20.3","55.0003","15.25","12.71717"]
+        
+        Returns:
+        None
+        
+        Determines the highest floating point precision of data points
+        and re-assigns parameter precision class variables (precisionPAR & precisionRADI) 
+        as such
+        """
+        
+        decPoints = []
+        
+        for i in range(len(data)):
+               data[i] = str(data[i])
+    
+        for i in range(len(data)):
+            val = data[i].split(".")
             
-            if not((sKey == "RADI") or (sKey == "NUR")):
-                precision = self.precisionPAR
-            elif not((sKey == "VROT") or (sKey == "NUR")):
-                precision = self.precisionRADI
-            else:
-                precision = 0
-                
-            for i in range(len(parVal)):
-                parVal[i]=round(float(parVal[i]),precision)
-            return parVal   
+            #check val has decimal & fractional part and append length of numbers of fractional part
+            if len(val)==2:
+                decPoints.append(len(val[1]))
+        
+        #assign greatest precision in decPoints to class variables handling precision
+
+        if len(decPoints)==0:
+            return 0
         else:
-            zeroValues = []
-            for i in range(int(self.NUR[0])):
-                zeroValues.append(0.0)
-            self.precisionPAR = 1
-            return zeroValues
+            return max(decPoints)
             
         
     def openDef(self):
@@ -250,41 +251,51 @@ class GraphWidget(QtGui.QWidget):
         
         if self.data == None:
             pass
-        elif (not(self.data==None) or len(self.data)>0):
-            self.VROT = self.getParameter("VROT",self.data)
-            self.RADI = self.getParameter("RADI",self.data)
-               
+        elif (not(self.data==None) or len(self.data)>0): # it's already being check for None in the first condition
+            self.getParameter(self.data)
+#            print ("parVals:",self.parVals)
             """this line may not be necessary"""
-#            self.numPrecisionY = self.precisionPAR
-#            self.numPrecisionX = self.precisionRADI
+            
+            self.numPrecisionY = self.numPrecision(self.parVals['VROT'][:])
+            self.numPrecisionX = self.numPrecision(self.parVals['RADI'][:])
             
 #           ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
-            self.NUR = self.getParameter("NUR",self.data)
-            diff = self.NUR[0]-len(self.VROT)
-            lastIndexItem = len(self.VROT)-1
-            if diff == self.NUR[0]:
+
+            diff = self.NUR-len(self.parVals[self.par])
+            lastItemIndex = len(self.parVals[self.par])-1
+            if diff == self.NUR:
                 for i in range(int(diff)):
-                    self.VROT.append(0.0)
-            elif diff > 0 and diff < self.NUR[0]:
+                    self.parVals[self.par].append(0.0)
+            elif diff > 0 and diff < self.NUR:
                 for i in range(int(diff)):
-                    self.VROT.append(self.VROT[lastIndexItem])
+                    self.parVals[self.par].append(self.parVals[self.par][lastItemIndex])
+
+#           ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
+
+            diff = self.NUR-len(self.parVals[self.par])
+            lastItemIndex = len(self.parVals[self.par])-1
+            if diff == self.NUR:
+                for i in range(int(diff)):
+                    self.parVals[self.par].append(0.0)
+            elif diff > 0 and diff < self.NUR:
+                for i in range(int(diff)):
+                    self.parVals[self.par].append(self.parVals[self.par][lastItemIndex])
             
-            
-            self.parVals = {'RADI':self.RADI[:],'VROT':self.VROT[:]}
             self.historyList.clear()
-            self.historyList[self.par] = [self.VROT[:]]
+            for i in self.parVals:
+                self.historyList[i] = [self.parVals[i][:]]
             
             #defining the x and y scale for plotting
-            if (max(self.RADI)-min(self.RADI))<=100:
-                self.xScale = [int(ceil(-2*max(self.RADI))),int(ceil(2*max(self.RADI)))]                           
-            else:
-                self.xScale = [int(ceil(min(self.RADI)-0.1*(max(self.RADI)-min(self.RADI)))),int(ceil(max(self.RADI)+0.1*(max(self.RADI)-min(self.RADI))))]                            
 
-            if (max(self.VROT)-min(self.VROT))<=100:
-                self.yScale = [int(ceil(-2*max(self.VROT))),int(ceil(2*max(self.VROT)))]
+            if (max(self.parVals['RADI'])-min(self.parVals['RADI']))<=100:
+                self.xScale = [int(ceil(-2*max(self.parVals['RADI']))),int(ceil(2*max(self.parVals['RADI'])))]                           
             else:
-                self.yScale = [int(ceil(min(self.VROT)-0.1*(max(self.VROT)-min(self.VROT)))),int(ceil(max(self.VROT)+0.1*(max(self.VROT)-min(self.VROT))))]
-                
+                self.xScale = [int(ceil(min(self.parVals['RADI'])-0.1*(max(self.parVals['RADI'])-min(self.parVals['RADI'])))),int(ceil(max(self.parVals['RADI'])+0.1*(max(self.parVals['RADI'])-min(self.parVals['RADI']))))]                            
+
+            if (max(self.parVals['VROT'])-min(self.parVals['VROT']))<=100:
+                self.yScale = [int(ceil(-2*max(self.parVals['VROT']))),int(ceil(2*max(self.parVals['VROT'])))]
+            else:
+                self.yScale = [int(ceil(min(self.parVals['VROT'])-0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT'])))),int(ceil(max(self.parVals['VROT'])+0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT']))))]
         
     def getClick(self,event):
         """Left mouse button is pressed
@@ -301,17 +312,11 @@ class GraphWidget(QtGui.QWidget):
         #on left click in figure canvas, captures mouse press and assign None to 
         #mouse release
         if (event.button == 1) and not(event.xdata == None):
-            self.mPress[0]=round(float(event.xdata),self.precisionRADI)
-            self.yVal = round(float(event.ydata),self.precisionPAR)
+            self.mPress[0]=round(float(event.xdata),self.numPrecisionX)
+            self.yVal = round(float(event.ydata),self.numPrecisionY)
             self.mRelease[0]=None
         
-        """if self.plot == "bingo":
-            print("It worked")
-            print (self.xScale)
-            print(self.yScale)
-            self.plotFunc()
-            self.plot = "No"
-            """
+
             
     def getRelease(self,event):   
         """Left mouse button is released
@@ -328,7 +333,7 @@ class GraphWidget(QtGui.QWidget):
         """
         #re-look at this logic --seems to be a flaw somewhere
         if not(event.ydata == None):
-            self.mRelease[0]=round(float(event.ydata),self.precisionPAR)
+            self.mRelease[0]=round(float(event.ydata),self.numPrecisionY)
         
         #append the new point to the history if the last item in history differs
         #from the new point
@@ -356,7 +361,7 @@ class GraphWidget(QtGui.QWidget):
         #moved out of the figure canvas, capture the VROT (y-value) during mouse
         #movement and call re-draw graph
         if (event.button == 1) and not(event.ydata == None):
-            self.mMotion[0]=round(float(event.ydata),self.precisionPAR)
+            self.mMotion[0]=round(float(event.ydata),self.numPrecisionY)
             self.plotFunc()
     
     def keyPressed(self,event):
@@ -380,7 +385,7 @@ class GraphWidget(QtGui.QWidget):
                 #re-assign parVal to hold last list values in history list dictionary
                 #and re-draw graph
                 for i in range(len(self.parVals[self.par])):
-                    self.parVals[self.par][i]=round(tempHistoryList[i],self.precisionPAR)
+                    self.parVals[self.par][i]=round(tempHistoryList[i],self.numPrecisionY)
 
                 if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
                     self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
@@ -519,11 +524,11 @@ class GraphWidget(QtGui.QWidget):
         The .def file would be re-opened and updated per the new values that
         are contained in the parVal* variable 
         """
-        
+        #instead of specific precision, call precision function for each param
         if sKey == 'RADI':
-            r = self.precisionRADI
+            r = self.numPrecisionX
         else:
-            r = self.precisionPAR
+            r = self.numPrecisionY
             
         #get the new values and format it as [0 20 30 40 50...]
         txt =""
@@ -577,6 +582,8 @@ class GraphWidget(QtGui.QWidget):
         """
         for i in self.parVals:
             self.saveFile(self.parVals[i],i)
+        
+        self.saveMessage()
     
     def saveMessage(self):
         """Displays the information about save action
@@ -607,9 +614,9 @@ class GraphWidget(QtGui.QWidget):
         """
         
         if sKey == 'RADI':
-            r = self.precisionRADI
+            r = self.numPrecisionX
         else:
-            r = self.precisionRADI
+            r = self.numPrecisionY
             
         #get the new values and format it as [0 20 30 40 50...]
         txt =""
@@ -651,6 +658,20 @@ class GraphWidget(QtGui.QWidget):
                 self.data = tmpFile[:]
                 f.close()
     
+    def saveAsMessage(self):
+        """Displays the information about save action
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the mainWindow class
+        
+        Returns:
+        None
+        
+        Displays a messagebox that informs user that changes have been successfully written to the .def file
+        """
+        QtGui.QMessageBox.information(self, "Information", "File Successfully Saved")
+        
+        
     def saveAsAll(self):
         """Creates a new .def file for all parameters in current .def file opened
         
@@ -669,6 +690,23 @@ class GraphWidget(QtGui.QWidget):
         
         for i in self.parVals:
             self.saveAs(fileName,self.parVals[i],i)
+            
+        self.saveAsMessage()
+        
+            
+    def tirificMessage(self):
+        """Displays the information about save action
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the mainWindow class
+        
+        Returns:
+        None
+        
+        Displays a messagebox that informs user that changes have been successfully written to the .def file
+        """
+        QtGui.QMessageBox.information(self, "Information", "Data cube ("+self.INSET+") specified at INSET doesn't exist in current working directory.")
+        
     
     def startTiriFiC(self):
         """Start TiRiFiC
@@ -682,47 +720,69 @@ class GraphWidget(QtGui.QWidget):
         
         Calls the os.system and opens terminal to start TiRiFiC
         """
-        os.system("gnome-terminal -e 'bash -c \"/home/samuel/software/TiRiFiC/tirific_2.3.4/bin/tirific deffile = "+self.fileName+"; exec bash\"'")
+        fileName = os.getcwd()
+        fileName = fileName+"/"+self.INSET
+        if os.path.isfile(fileName):
+            os.system("gnome-terminal -e 'bash -c \"/home/samuel/software/TiRiFiC/tirific_2.3.4/bin/tirific deffile = "+self.fileName+"; exec bash\"'")
+        else:
+            self.tirificMessage()
+        
         
     def slotChangeData(self,fileName):
+#        if os.path.isfile(fileName):
+#            print("File does exist")
+##            os.listdir(os.getcwd)
+#        else:
+#            print("file really doesnt exist")
+#            os.system('ls')
+#        
+#        
+#        print (self.fileStat)
+#        print (os.stat(fileName).st_mtime)
+#        if not(os.stat(fileName).st_mtime == self.fileStat):
+#            print ("file changed")
+#            self.fileStat = os.stat(fileName).st_mtime
+#            print("Change the graph now")
+#        else:
+#            print("file didn't change")
+##                except:
+##                    pass
         with open(fileName) as f:
             self.data = f.readlines()
         f.close()
         
 
-        self.VROT = self.getParameter("VROT",self.data)
-        self.RADI = self.getParameter("RADI",self.data)
-           
+        self.getParameter(self.data)
+        
         """this line may not be necessary"""
-#            self.numPrecisionY = self.precisionPAR
-#            self.numPrecisionX = self.precisionRADI
+
+        self.numPrecisionY = self.numPrecision(self.parVals['VROT'][:])
+        self.numPrecisionX = self.numPrecision(self.parVals['RADI'][:])
         
 #           ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
-        self.NUR = self.getParameter("NUR",self.data)
-        diff = self.NUR[0]-len(self.VROT)
-        lastIndexItem = len(self.VROT)-1
-        if diff == self.NUR[0]:
+        diff = self.NUR-len(self.parVals[self.par])
+        lastItemIndex = len(self.parVals[self.par])-1
+        if diff == self.NUR:
             for i in range(int(diff)):
-                self.VROT.append(0.0)
-        elif diff > 0 and diff < self.NUR[0]:
+                self.parVals[self.par].append(0.0)
+        elif diff > 0 and diff < self.NUR:
             for i in range(int(diff)):
-                self.VROT.append(self.VROT[lastIndexItem])
+                self.parVals[self.par].append(self.parVals[self.par][lastItemIndex])
         
-        
-        self.parVals = {'RADI':self.RADI[:],'VROT':self.VROT[:]}
         self.historyList.clear()
-        self.historyList[self.par] = [self.VROT[:]]
-        
+        for i in self.parVals:
+            self.historyList[i] = [self.parVals[i][:]]
+            
         #defining the x and y scale for plotting
-        if (max(self.RADI)-min(self.RADI))<=100:
-            self.xScale = [int(ceil(-2*max(self.RADI))),int(ceil(2*max(self.RADI)))]                           
+        if (max(self.parVals['RADI'])-min(self.parVals['RADI']))<=100:
+            self.xScale = [int(ceil(-2*max(self.parVals['RADI']))),int(ceil(2*max(self.parVals['RADI'])))]                           
         else:
-            self.xScale = [int(ceil(min(self.RADI)-0.1*(max(self.RADI)-min(self.RADI)))),int(ceil(max(self.RADI)+0.1*(max(self.RADI)-min(self.RADI))))]                            
+            self.xScale = [int(ceil(min(self.parVals['RADI'])-0.1*(max(self.parVals['RADI'])-min(self.parVals['RADI'])))),int(ceil(max(self.parVals['RADI'])+0.1*(max(self.parVals['RADI'])-min(self.parVals['RADI']))))]                            
 
-        if (max(self.VROT)-min(self.VROT))<=100:
-            self.yScale = [int(ceil(-2*max(self.VROT))),int(ceil(2*max(self.VROT)))]
+        if (max(self.parVals['VROT'])-min(self.parVals['VROT']))<=100:
+            self.yScale = [int(ceil(-2*max(self.parVals['VROT']))),int(ceil(2*max(self.parVals['VROT'])))]
         else:
-            self.yScale = [int(ceil(min(self.VROT)-0.1*(max(self.VROT)-min(self.VROT)))),int(ceil(max(self.VROT)+0.1*(max(self.VROT)-min(self.VROT))))]
+            self.yScale = [int(ceil(min(self.parVals['VROT'])-0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT'])))),int(ceil(max(self.parVals['VROT'])+0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT']))))] 
         self.firstPlot()
         
     def openEditor(self):
@@ -732,20 +792,24 @@ class GraphWidget(QtGui.QWidget):
         if ok:
             fileName = os.getcwd()
             fileName += "/tmpDeffile.def"
+
             for i in self.parVals:
                 self.saveAs(fileName,self.parVals[i],i)
-
+            
             self.fileWatcher = QtCore.QFileSystemWatcher()
             self.fileWatcher.addPath(fileName)
-            self.fileWatcher.fileChanged.connect(self.slotChangeData) 
+            
+
             if len(text)>0:
                 programName = str(text)
 #                os.system("gnome-terminal -e 'bash -c \""+programName+" "+fileName+"; exec bash\"'")
                 run([programName,fileName])
             else:
 #                os.system("gnome-terminal -e 'bash -c \"gedit "+fileName+"; exec bash\"'")
-                run(["gedit",fileName])
-    
+                run(["gedit",fileName])  
+                
+            self.fileWatcher.fileChanged.connect(self.slotChangeData)
+
 
 class SMWindow(QtGui.QWidget):
 #    xScale = [0,0]
@@ -840,6 +904,8 @@ class ParamSpec(QtGui.QWidget):
 #        self.setMinimumSize(1280, 720)
         self.minimumSizeHint()
         self.setFocus()
+
+
 
 class mainWindow(QtGui.QMainWindow):
     
@@ -967,29 +1033,21 @@ class mainWindow(QtGui.QMainWindow):
            exec(self.gw.par + "= self.gw.getParameter(self.gw.par,self.gw.data)") in globals(), locals()
 
            
-           #self.gw.numPrecisionY = 
-           strTemp = eval(self.gw.par)[:]
-           for i in range(len(strTemp)):
-               strTemp[i] = str(strTemp[i])
-          
-           
-           self.gw.numPrecision(self.gw.par,strTemp)
+           self.gw.numPrecisionY = self.gw.numPrecision(self.gw.parVals[self.gw.par])
            
            #this evaluates to the content of the variable in par; e.g. tmp = VROT[:]
            tmp = eval(self.gw.par)[:]
            
-           diff = self.gw.NUR[0]-len(tmp)
-           lastIndexItem = len(tmp)-1
-           if diff == self.gw.NUR[0]:
+           diff = self.gw.NUR-len(tmp)
+           lastItemIndex = len(tmp)-1
+           if diff == self.gw.NUR:
                for i in range(int(diff)):
-                   eval(self.gw.par).append(0.0)
-           elif diff > 0 and diff < self.gw.NUR[0]:
+                   self.gw.parVals[self.gw.par].append(0.0)
+           elif diff > 0 and diff < self.gw.NUR:
                for i in range(int(diff)):
-                   eval(self.gw.par).append(tmp[lastIndexItem])
+                   self.gw.parVals[self.gw.par].append(tmp[lastItemIndex])  
             
-           self.gw.parVals[self.gw.par] = eval(self.gw.par)[:]
-            
-           self.gw.historyList[self.gw.par] = [self.gw.parVals[self.gw.par][:]]
+          # self.gw.historyList[self.gw.par] = [self.gw.parVals[self.gw.par][:]]
             
             #print (historyList)
            if max(self.gw.parVals[self.gw.par])<=0:
@@ -1007,11 +1065,10 @@ class mainWindow(QtGui.QMainWindow):
 def main():
     app = QtGui.QApplication(sys.argv)
 #    app.geometry("1280x720")
-
     GUI = mainWindow()
         
     GUI.show()
-    
+
     app.exec_()
 
 
