@@ -1,12 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+"""
 
 #libraries
 from PyQt4 import QtGui, QtCore
-import os, time
+import os,sys
 from subprocess import Popen as run
-import sys
-import numpy as np
 from math import ceil 
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib import style
@@ -20,37 +24,41 @@ class GraphWidget(QtGui.QWidget):
     key = "Yes"
     scaleChange = "No"
     choice = "Beyond Viewgraph"
-    precisionPAR = 0 # may not be necessary
-    precisionRADI = 0 # may not be necessary
     INSET = 'None'
+    par = 'VROT'
+    unitMeas = 'km/s'
+    tmpDeffile = os.getcwd() + "/tmpDeffile.def"
+    fileName = None
+    
+    before = 0
     numPrecisionY = 0
     numPrecisionX = 0
-    NUR = 0#shouldnt this just be an integer
+    NUR = 0
     data = []
-    VROT = []
-    RADI = [0]
+    parVals = {}
     historyList={}
     xScale=[0,0]
     yScale=[0,0]
-    fileName = None
-    par = 'VROT'
-    unitMeas = 'km/s'
-    mPress=[-5+min(RADI)];mRelease=['None'];mMotion=[-5+min(RADI)]########
+       
+    
+    mPress=[-5]
+    mRelease=['None']
+    mMotion=[-5]
     yVal = 0
-    parVals = {}
-    fileStat = 0
+    
+    
     
     
     
     def __init__(self):
         super(GraphWidget, self).__init__()
-        #Grid Layout
+#		 Grid Layout
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
         self.setMinimumSize(1280,720)
         self.center()
         
-        #Canvas and Toolbar
+#		 Canvas and Toolbar
         self.figure = plt.figure() 
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
@@ -66,7 +74,7 @@ class GraphWidget(QtGui.QWidget):
         grid.addWidget(self.toolbar, 1,0,1,2)
         grid.addWidget(self.canvas, 2,0,1,2)
 
-        #Import def Button
+#		 Import def Button
         btn1 = QtGui.QPushButton('Import Def', self)
         btn1.minimumSize()
         btn1.clicked.connect(self.openDef)
@@ -104,18 +112,15 @@ class GraphWidget(QtGui.QWidget):
         
         User action will be confirmed by popping up a yes/no prompt
         """
-        #message box for action confirmation
-        fileName = os.getcwd()
-        fileName += "/tmpDeffile.def"
+#		 message box for action confirmation
         choice = QtGui.QMessageBox.question(self,'Exit Application',
                                             "Are you sure?",
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
         if choice == QtGui.QMessageBox.Yes:
-            if os.path.isfile(fileName):
-                os.remove(fileName)
+            if os.path.isfile(self.tmpDeffile):
+                os.remove(self.tmpDeffile)
             sys.exit(0)
         else:
-            
             pass
     
     def getData(self):
@@ -132,10 +137,10 @@ class GraphWidget(QtGui.QWidget):
         data will be a none type variable if the fileName is invalid or no file is chosen
         """
         
-        #stores file path of .def to fileName variable after user selects file in open dialog box
+#		 stores file path of .def to fileName variable after user selects file in open dialog box
         self.fileName = QtGui.QFileDialog.getOpenFileName(self,"Open .def File", os.getcwd(),".def Files (*.def)")
         
-        #assign texts of read lines to data variable if fileName is exists, else assign None
+#		 assign texts of read lines to data variable if fileName is exists, else assign None
         if (not(self.fileName==None)) and (not len(self.fileName)==0):
             with open(self.fileName) as f:
                 data = f.readlines()
@@ -146,9 +151,21 @@ class GraphWidget(QtGui.QWidget):
         return data
 
     def strType(self,var):
+        """Determines the data type of a variable
+        
+        Keyword arguments:
+        self --         main window being displayed i.e. the current instance of the mainWindow class
+        var  --         variable holding the values
+       
+        Returns:
+        int, float or str : string
+        
+        The function evaluates the data type of the var object and returns int, 
+        float or str
+        """        
         try:
-            if int(var) == float(var):
-                return 'int'
+			if int(var) == float(var):
+				return 'int'
         except:
             try:
                 float(var)
@@ -172,25 +189,20 @@ class GraphWidget(QtGui.QWidget):
         The data points for the specific parameter value are located and converted 
         from string to float data types for plotting and other data manipulation
         """
-        #search through fetched data for values of "PAR =" or "PAR = " or "PAR=" or "PAR= "
+#		 search through fetched data for values of "PAR =" or "PAR = " or "PAR=" or "PAR= "
 
         for i in data:
             lineVals = i.split("=")
             if (len(lineVals)>1):
                 lineVals[0] = ''.join(lineVals[0].split())
-                #if (sKey == lineVals[0]):
                 parVal = lineVals[1].split()
 
-                
                 if lineVals[0].upper() == "INSET":
                     self.INSET = ''.join(lineVals[1].split())
                 
                 if lineVals[0]=="NUR":
-
                     self.NUR = int(parVal[0])
-
                 else:
-
                     if (len(parVal)>0) and not(self.strType(parVal[0]) == 'str') and not(self.strType(parVal[-1]) == 'str') and not(self.strType(parVal[len(parVal)/2]) == 'str'):
                         precision = self.numPrecision(parVal)
                         for i in range(len(parVal)):
@@ -209,23 +221,21 @@ class GraphWidget(QtGui.QWidget):
         None
         
         Determines the highest floating point precision of data points
-        and re-assigns parameter precision class variables (precisionPAR & precisionRADI) 
-        as such
         """
         
         decPoints = []
         
         for i in range(len(data)):
-               data[i] = str(data[i])
+			data[i] = str(data[i])
     
         for i in range(len(data)):
             val = data[i].split(".")
             
-            #check val has decimal & fractional part and append length of numbers of fractional part
+#            check val has decimal & fractional part and append length of numbers of fractional part
             if len(val)==2:
                 decPoints.append(len(val[1]))
         
-        #assign greatest precision in decPoints to class variables handling precision
+#        assign greatest precision in decPoints to class variables handling precision
 
         if len(decPoints)==0:
             return 0
@@ -251,24 +261,11 @@ class GraphWidget(QtGui.QWidget):
         
         if self.data == None:
             pass
-        elif (not(self.data==None) or len(self.data)>0): # it's already being check for None in the first condition
+        elif (not(self.data==None) or len(self.data)>0):
             self.getParameter(self.data)
-#            print ("parVals:",self.parVals)
-            """this line may not be necessary"""
             
             self.numPrecisionY = self.numPrecision(self.parVals['VROT'][:])
             self.numPrecisionX = self.numPrecision(self.parVals['RADI'][:])
-            
-#           ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
-
-            diff = self.NUR-len(self.parVals[self.par])
-            lastItemIndex = len(self.parVals[self.par])-1
-            if diff == self.NUR:
-                for i in range(int(diff)):
-                    self.parVals[self.par].append(0.0)
-            elif diff > 0 and diff < self.NUR:
-                for i in range(int(diff)):
-                    self.parVals[self.par].append(self.parVals[self.par][lastItemIndex])
 
 #           ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
 
@@ -285,7 +282,7 @@ class GraphWidget(QtGui.QWidget):
             for i in self.parVals:
                 self.historyList[i] = [self.parVals[i][:]]
             
-            #defining the x and y scale for plotting
+#            defining the x and y scale for plotting
 
             if (max(self.parVals['RADI'])-min(self.parVals['RADI']))<=100:
                 self.xScale = [int(ceil(-2*max(self.parVals['RADI']))),int(ceil(2*max(self.parVals['RADI'])))]                           
@@ -309,8 +306,8 @@ class GraphWidget(QtGui.QWidget):
         
         The xData is captured when the left mouse button is clicked on the canvas
         """     
-        #on left click in figure canvas, captures mouse press and assign None to 
-        #mouse release
+#        on left click in figure canvas, captures mouse press and assign None to 
+#        mouse release
         if (event.button == 1) and not(event.xdata == None):
             self.mPress[0]=round(float(event.xdata),self.numPrecisionX)
             self.yVal = round(float(event.ydata),self.numPrecisionY)
@@ -331,17 +328,16 @@ class GraphWidget(QtGui.QWidget):
         The xData is captured when the left mouse button is released on the canvas.
         The new data point is added to the history and mouse pressed is assigned None
         """
-        #re-look at this logic --seems to be a flaw somewhere
+#        re-look at this logic --seems to be a flaw somewhere
         if not(event.ydata == None):
             self.mRelease[0]=round(float(event.ydata),self.numPrecisionY)
         
-        #append the new point to the history if the last item in history differs
-        #from the new point
+#        append the new point to the history if the last item in history differs
+#        from the new point
         if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
             self.historyList[self.par].append(self.parVals[self.par][:])
             
         self.mPress[0]=None
-#                self.mRelease[0]=None
 
 
     def getMotion(self,event):
@@ -354,12 +350,11 @@ class GraphWidget(QtGui.QWidget):
         Returns:
         None
         
-        The xData is captured when the left mouse button is released on the canvas.
-        The new data point is added to the history and mouse pressed is assigned None
+        *
         """
-        #whilst the left mouse button is being clicked and mouse pointer hasnt (why not use mPress=None instead of event.button = 1)
-        #moved out of the figure canvas, capture the VROT (y-value) during mouse
-        #movement and call re-draw graph
+#        whilst the left mouse button is being clicked and mouse pointer hasnt (why not use mPress=None instead of event.button = 1)
+#        moved out of the figure canvas, capture the VROT (y-value) during mouse
+#        movement and call re-draw graph
         if (event.button == 1) and not(event.ydata == None):
             self.mMotion[0]=round(float(event.ydata),self.numPrecisionY)
             self.plotFunc()
@@ -377,13 +372,16 @@ class GraphWidget(QtGui.QWidget):
         Deletes the last item in the history list when "Ctrl+z" is pressed and
         re-draws graph
         """
-        if event.key == "ctrl+z" or event.key == "ctrl+Z":
-            #history list musn't be empty
+        
+        undoKey = event.key
+
+        if str.lower(undoKey.encode('ascii','ignore')) == "ctrl+z":
+#            history list musn't be empty
             if len(self.historyList[self.par])>1:
                 self.historyList[self.par].pop()
                 tempHistoryList = self.historyList[self.par][len(self.historyList[self.par])-1]
-                #re-assign parVal to hold last list values in history list dictionary
-                #and re-draw graph
+#                re-assign parVal to hold last list values in history list dictionary
+#                and re-draw graph
                 for i in range(len(self.parVals[self.par])):
                     self.parVals[self.par][i]=round(tempHistoryList[i],self.numPrecisionY)
 
@@ -395,7 +393,7 @@ class GraphWidget(QtGui.QWidget):
                 self.key = "Yes"
                 self.plotFunc()
             else:
-                #pop up a messageBox saying history list is exhausted
+#                pop up a messageBox saying history list is exhausted
 #                print("history is empty")
                 self.showInformation()
        
@@ -464,48 +462,47 @@ class GraphWidget(QtGui.QWidget):
                 axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
             ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
             ax.set_title('Plot')
-            #ax.set_xticks(self.parVals['RADI'])
+#            ax.set_xticks(self.parVals['RADI'])
             self.canvas.draw() 
             self.scaleChange = "No"
         
         if self.key=="Yes":
             self.firstPlot()
             
-        #this re-plots the graph as long as the mouse is in motion and the right
-        #data point is clicked
+#        this re-plots the graph as long as the mouse is in motion and the right
+#        data point is clicked
         else:
             for j in range(len(self.parVals['RADI'])):
                 if (self.mPress[0] < (self.parVals['RADI'][j])+3) and (self.mPress[0] > (self.parVals['RADI'][j])-3) and (self.mRelease[0]==None):
                     self.parVals[self.par][j] = self.mMotion[0]
+
                     ax = self.figure.add_subplot(111)
                     ax.clear()
                     ax.set_xlim(self.xScale[0],self.xScale[1])            
 #                    print (self.choice)
                     if self.choice == "Beyond Viewgraph":
-                        if (self.yScale[1] - self.mMotion[0])<=200:
-                            self.yScale[1] += 100
-                        elif (self.mMotion[0] - self.yScale[0])<= 200:
-                            self.yScale[0] -= 100
+                        
+                        if self.mMotion[0] >= 0.85*self.yScale[1]:
+                            self.yScale[1] += (self.yScale[1]*0.1) if self.yScale[1]>0 else (self.yScale[1]*-0.1)
+                            self.yScale[0] -= (self.yScale[0]*0.05) if self.yScale[0]>0 else (self.yScale[0]*-0.05)
+                        elif self.mMotion[0] <= 0.85*self.yScale[0]:
+                            self.yScale[0] -= (self.yScale[0]*0.1) if self.yScale[0]>0 else (self.yScale[0]*-0.1)
+                            self.yScale[1] += (self.yScale[1]*0.05) if self.yScale[1]>0 else (self.yScale[1]*-0.05)
                         
                     elif self.choice == "Free":
-                        if self.mMotion[0]>self.yVal:
-                            if ((self.yScale[1]-max(self.parVals[self.par]))<=300) and ((max(self.parVals[self.par])-self.mMotion[0])<=20):
-                                self.yScale[1] += 200
-                            elif abs(self.yScale[0] - min(self.parVals[self.par]))>=300:
-                                self.yScale[0] += 200
-                        elif self.mMotion[0]<self.yVal:
-                            if ((min(self.parVals[self.par])-self.yScale[0])<=300) and ((min(self.parVals[self.par])-self.mMotion[0])<=20):
-                                self.yScale[0] -= 200
-                            elif abs(self.yScale[1] - max(self.parVals[self.par]))>=300:
-                                self.yScale[1] -= 200
-                    print ("after koraa: ",self.yScale)
+                        if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
+                            self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
+                        else:
+                            self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+                    
+
                     ax.set_ylim(self.yScale[0],self.yScale[1])
                     for axes in self.figure.get_axes():
                         axes.set_xlabel("RADI (arcsec)")
                         axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
                     ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
                     ax.set_title('Plot')
-                  #  ax.set_xticks(self.parVals['RADI'])
+#                    ax.set_xticks(self.parVals['RADI'])
 #                    ax.set_yticks(np.arange(min(self.parVals[self.par]),max(self.parVals[self.par])+1,200))
                     self.canvas.draw()                
 
@@ -524,19 +521,19 @@ class GraphWidget(QtGui.QWidget):
         The .def file would be re-opened and updated per the new values that
         are contained in the parVal* variable 
         """
-        #instead of specific precision, call precision function for each param
+#        instead of specific precision, call precision function for each param
         if sKey == 'RADI':
             r = self.numPrecisionX
         else:
             r = self.numPrecisionY
             
-        #get the new values and format it as [0 20 30 40 50...]
+#        get the new values and format it as [0 20 30 40 50...]
         txt =""
         for i in range(len(newVals)):
             txt = txt+" " +'{0:.{1}f}'.format(newVals[i], r)
 
-            #txt = txt+" " + str(newVals[i])
-        #put this block of code in a try except block
+#        txt = txt+" " + str(newVals[i])
+#        put this block of code in a try except block
         tmpFile=[]
         with open(self.fileName,'a') as f:
             status = False
@@ -618,12 +615,10 @@ class GraphWidget(QtGui.QWidget):
         else:
             r = self.numPrecisionY
             
-        #get the new values and format it as [0 20 30 40 50...]
+#        get the new values and format it as [0 20 30 40 50...]
         txt =""
         for i in range(len(newVals)):
             txt = txt+" " +'{0:.{1}f}'.format(newVals[i], r)
-
-            #txt = txt+" " + str(newVals[i])
 
         tmpFile=[]
         
@@ -729,37 +724,18 @@ class GraphWidget(QtGui.QWidget):
         
         
     def slotChangeData(self,fileName):
-#        if os.path.isfile(fileName):
-#            print("File does exist")
-##            os.listdir(os.getcwd)
-#        else:
-#            print("file really doesnt exist")
-#            os.system('ls')
-#        
-#        
-#        print (self.fileStat)
-#        print (os.stat(fileName).st_mtime)
-#        if not(os.stat(fileName).st_mtime == self.fileStat):
-#            print ("file changed")
-#            self.fileStat = os.stat(fileName).st_mtime
-#            print("Change the graph now")
-#        else:
-#            print("file didn't change")
-##                except:
-##                    pass
+
         with open(fileName) as f:
             self.data = f.readlines()
         f.close()
         
 
         self.getParameter(self.data)
-        
-        """this line may not be necessary"""
 
         self.numPrecisionY = self.numPrecision(self.parVals['VROT'][:])
         self.numPrecisionX = self.numPrecision(self.parVals['RADI'][:])
         
-#           ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
+#        ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
         diff = self.NUR-len(self.parVals[self.par])
         lastItemIndex = len(self.parVals[self.par])-1
         if diff == self.NUR:
@@ -773,7 +749,7 @@ class GraphWidget(QtGui.QWidget):
         for i in self.parVals:
             self.historyList[i] = [self.parVals[i][:]]
             
-        #defining the x and y scale for plotting
+#        defining the x and y scale for plotting
         if (max(self.parVals['RADI'])-min(self.parVals['RADI']))<=100:
             self.xScale = [int(ceil(-2*max(self.parVals['RADI']))),int(ceil(2*max(self.parVals['RADI'])))]                           
         else:
@@ -785,35 +761,41 @@ class GraphWidget(QtGui.QWidget):
             self.yScale = [int(ceil(min(self.parVals['VROT'])-0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT'])))),int(ceil(max(self.parVals['VROT'])+0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT']))))] 
         self.firstPlot()
         
+    def animate(self,i):
+        fileName = os.getcwd()
+        fileName += "/tmpDeffile.def"
+        
+
+        if os.path.isfile(self.tmpDeffile):
+            
+            after = os.stat(self.tmpDeffile).st_mtime
+            if self.before != after:
+                self.before = after
+                self.slotChangeData(self.tmpDeffile)
+        else:
+            pass
+        
+        
     def openEditor(self):
         text,ok = QtGui.QInputDialog.getText(self,'Text Editor Input Dialog', 
                                             'Enter text editor:')
                                             
         if ok:
-            fileName = os.getcwd()
-            fileName += "/tmpDeffile.def"
 
             for i in self.parVals:
-                self.saveAs(fileName,self.parVals[i],i)
-            
-            self.fileWatcher = QtCore.QFileSystemWatcher()
-            self.fileWatcher.addPath(fileName)
-            
+                self.saveAs(self.tmpDeffile,self.parVals[i],i)
 
             if len(text)>0:
                 programName = str(text)
-#                os.system("gnome-terminal -e 'bash -c \""+programName+" "+fileName+"; exec bash\"'")
-                run([programName,fileName])
+                run([programName,self.tmpDeffile])
             else:
-#                os.system("gnome-terminal -e 'bash -c \"gedit "+fileName+"; exec bash\"'")
-                run(["gedit",fileName])  
+                run(["gedit",self.tmpDeffile])  
                 
-            self.fileWatcher.fileChanged.connect(self.slotChangeData)
+#            assign current modified time of temporary def file to before    
+            self.before = os.stat(self.tmpDeffile).st_mtime
 
 
 class SMWindow(QtGui.QWidget):
-#    xScale = [0,0]
-#    yScale = [0,0]
     
     def __init__(self):
         super(SMWindow, self).__init__()
@@ -844,9 +826,9 @@ class SMWindow(QtGui.QWidget):
         self.hbox = QtGui.QHBoxLayout()
     
         self.radioFree = QtGui.QRadioButton("Free")
-       # self.radioFree.clicked.connect(self.getOptF)
+#        self.radioFree.clicked.connect(self.getOptF)
         self.radioViewG = QtGui.QRadioButton("Beyond Viewgraph")
-        #self.radioViewG.clicked.connect(self.getOptV)
+#        self.radioViewG.clicked.connect(self.getOptV)
         
         self.hbox.addWidget(self.radioFree)
         self.hbox.addWidget(self.radioViewG)
@@ -854,10 +836,10 @@ class SMWindow(QtGui.QWidget):
         self.fbox.addRow(QtGui.QLabel("Scale Behaviour"),self.hbox)
        
         self.btnUpdate = QtGui.QPushButton('Update', self)
-       # self.btnUpdate.clicked.connect(self.updateScale)
+#        self.btnUpdate.clicked.connect(self.updateScale)
         self.btnUpdate.minimumSize()
         self.btnCancel = QtGui.QPushButton('Cancel', self)
-        #self.btnCancel.clicked.connect(self.close)
+#        self.btnCancel.clicked.connect(self.close)
         self.btnCancel.minimumSize()
         self.fbox.addRow(self.btnUpdate,self.btnCancel) 
     
@@ -886,9 +868,7 @@ class ParamSpec(QtGui.QWidget):
        
         self.fbox.addRow(self.parameter)
         self.fbox.addRow(self.unitMeasurement)
-        
-    
-        
+
        
         self.btnOK = QtGui.QPushButton('OK', self)
         
@@ -963,16 +943,6 @@ class mainWindow(QtGui.QMainWindow):
         self.paraDef.setStatusTip('Determines which parameter is plotted on the y-axis')
         self.paraDef.triggered.connect(self.ps.show)
         
-#        self.QtGui.statusBar(self)
-#        path = os.getcwd() + '/tmpDeffile.def'
-#        self.fileWatcher = QtCore.QFileSystemWatcher()
-#        self.fileWatcher.addPath(path)    
-##        QtCore.QObject.connect(fileWatcher, QtCore.SIGNAL("fileChanged(QString)"),QtCore.SLOT("GUI.gw.slotChangeData(path)"))
-##        self.fileWatcher.connect(QtCore.SIGNAL("fileChanged"),self.gw.slotChangeData(path))
-#        if path != None:
-#            self.fileWatcher.fileChanged.connect(self.gw.slotChangeData(path)) 
-        
-        
         self.sm.radioFree.clicked.connect(self.getOptF)
         self.sm.radioViewG.clicked.connect(self.getOptV)
         self.sm.btnUpdate.clicked.connect(self.updateScale)
@@ -1029,13 +999,13 @@ class mainWindow(QtGui.QMainWindow):
            self.gw.par = str(self.ps.parameter.text())
            self.gw.unitMeas = str(self.ps.unitMeasurement.text())
           
-           #this evaluates to e.g. VROT = [20,30,40,50]
+#           this evaluates to e.g. VROT = [20,30,40,50]
            exec(self.gw.par + "= self.gw.getParameter(self.gw.par,self.gw.data)") in globals(), locals()
 
            
            self.gw.numPrecisionY = self.gw.numPrecision(self.gw.parVals[self.gw.par])
            
-           #this evaluates to the content of the variable in par; e.g. tmp = VROT[:]
+#           this evaluates to the content of the variable in par; e.g. tmp = VROT[:]
            tmp = eval(self.gw.par)[:]
            
            diff = self.gw.NUR-len(tmp)
@@ -1047,11 +1017,11 @@ class mainWindow(QtGui.QMainWindow):
                for i in range(int(diff)):
                    self.gw.parVals[self.gw.par].append(tmp[lastItemIndex])  
             
-          # self.gw.historyList[self.gw.par] = [self.gw.parVals[self.gw.par][:]]
+#           self.gw.historyList[self.gw.par] = [self.gw.parVals[self.gw.par][:]]
             
-            #print (historyList)
+#           print (historyList)
            if max(self.gw.parVals[self.gw.par])<=0:
-               self.gw.yScale = [-50,50]
+               self.gw.yScale = [-100,100]
            elif (max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par]))<=100:
                self.gw.yScale = [int(ceil(-2*max(self.gw.parVals[self.gw.par]))),int(ceil(2*max(self.gw.parVals[self.gw.par])))]
            else:
@@ -1064,10 +1034,11 @@ class mainWindow(QtGui.QMainWindow):
 
 def main():
     app = QtGui.QApplication(sys.argv)
-#    app.geometry("1280x720")
     GUI = mainWindow()
         
     GUI.show()
+    
+    ani = animation.FuncAnimation(GUI.gw.figure, GUI.gw.animate, interval=100)
 
     app.exec_()
 
