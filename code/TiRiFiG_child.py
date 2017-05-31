@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Spyder Editor
+Created on Sat Feb  4 22:49:38 2017
 
+@author: samuel
 """
 
 #libraries
@@ -36,7 +37,8 @@ class GraphWidget(QtGui.QWidget):
     NUR = 0
     data = []
     parVals = {}
-    historyList={}
+    historyList = {}
+    historyKeys= [['VROT','km/s']]
     xScale=[0,0]
     yScale=[0,0]
        
@@ -52,13 +54,13 @@ class GraphWidget(QtGui.QWidget):
     
     def __init__(self):
         super(GraphWidget, self).__init__()
-#		 Grid Layout
+        #Grid Layout
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
         self.setMinimumSize(1280,720)
         self.center()
         
-#		 Canvas and Toolbar
+        #Canvas and Toolbar
         self.figure = plt.figure() 
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
@@ -74,7 +76,7 @@ class GraphWidget(QtGui.QWidget):
         grid.addWidget(self.toolbar, 1,0,1,2)
         grid.addWidget(self.canvas, 2,0,1,2)
 
-#		 Import def Button
+        #Import def Button
         btn1 = QtGui.QPushButton('Import Def', self)
         btn1.minimumSize()
         btn1.clicked.connect(self.openDef)
@@ -112,7 +114,7 @@ class GraphWidget(QtGui.QWidget):
         
         User action will be confirmed by popping up a yes/no prompt
         """
-#		 message box for action confirmation
+        #message box for action confirmation
         choice = QtGui.QMessageBox.question(self,'Exit Application',
                                             "Are you sure?",
                                             QtGui.QMessageBox.Yes | QtGui.QMessageBox.No)
@@ -137,10 +139,10 @@ class GraphWidget(QtGui.QWidget):
         data will be a none type variable if the fileName is invalid or no file is chosen
         """
         
-#		 stores file path of .def to fileName variable after user selects file in open dialog box
+        #stores file path of .def to fileName variable after user selects file in open dialog box
         self.fileName = QtGui.QFileDialog.getOpenFileName(self,"Open .def File", os.getcwd(),".def Files (*.def)")
         
-#		 assign texts of read lines to data variable if fileName is exists, else assign None
+        #assign texts of read lines to data variable if fileName is exists, else assign None
         if (not(self.fileName==None)) and (not len(self.fileName)==0):
             with open(self.fileName) as f:
                 data = f.readlines()
@@ -164,8 +166,8 @@ class GraphWidget(QtGui.QWidget):
         float or str
         """        
         try:
-			if int(var) == float(var):
-				return 'int'
+            if int(var) == float(var):
+                return 'int'
         except:
             try:
                 float(var)
@@ -189,25 +191,30 @@ class GraphWidget(QtGui.QWidget):
         The data points for the specific parameter value are located and converted 
         from string to float data types for plotting and other data manipulation
         """
-#		 search through fetched data for values of "PAR =" or "PAR = " or "PAR=" or "PAR= "
+        #search through fetched data for values of "PAR =" or "PAR = " or "PAR=" or "PAR= "
 
         for i in data:
             lineVals = i.split("=")
             if (len(lineVals)>1):
                 lineVals[0] = ''.join(lineVals[0].split())
+                #if (sKey == lineVals[0]):
                 parVal = lineVals[1].split()
 
+                
                 if lineVals[0].upper() == "INSET":
                     self.INSET = ''.join(lineVals[1].split())
                 
-                if lineVals[0]=="NUR":
+                if lineVals[0].upper()=="NUR":
+
                     self.NUR = int(parVal[0])
+
                 else:
+
                     if (len(parVal)>0) and not(self.strType(parVal[0]) == 'str') and not(self.strType(parVal[-1]) == 'str') and not(self.strType(parVal[len(parVal)/2]) == 'str'):
                         precision = self.numPrecision(parVal)
                         for i in range(len(parVal)):
                             parVal[i]=round(float(parVal[i]),precision)
-                        self.parVals[lineVals[0]] =  parVal[:] 
+                        self.parVals[str.upper(lineVals[0])] =  parVal[:] 
 
 
     def numPrecision(self,data):
@@ -226,7 +233,7 @@ class GraphWidget(QtGui.QWidget):
         decPoints = []
         
         for i in range(len(data)):
-			data[i] = str(data[i])
+               data[i] = str(data[i])
     
         for i in range(len(data)):
             val = data[i].split(".")
@@ -267,8 +274,8 @@ class GraphWidget(QtGui.QWidget):
             self.numPrecisionY = self.numPrecision(self.parVals['VROT'][:])
             self.numPrecisionX = self.numPrecision(self.parVals['RADI'][:])
 
-#           ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
-
+#           ensure there are the same points for parameters as there are for RADI as specified in NUR parameter
+                
             diff = self.NUR-len(self.parVals[self.par])
             lastItemIndex = len(self.parVals[self.par])-1
             if diff == self.NUR:
@@ -282,7 +289,7 @@ class GraphWidget(QtGui.QWidget):
             for i in self.parVals:
                 self.historyList[i] = [self.parVals[i][:]]
             
-#            defining the x and y scale for plotting
+            #defining the x and y scale for plotting
 
             if (max(self.parVals['RADI'])-min(self.parVals['RADI']))<=100:
                 self.xScale = [int(ceil(-2*max(self.parVals['RADI']))),int(ceil(2*max(self.parVals['RADI'])))]                           
@@ -306,8 +313,8 @@ class GraphWidget(QtGui.QWidget):
         
         The xData is captured when the left mouse button is clicked on the canvas
         """     
-#        on left click in figure canvas, captures mouse press and assign None to 
-#        mouse release
+        #on left click in figure canvas, captures mouse press and assign None to 
+        #mouse release
         if (event.button == 1) and not(event.xdata == None):
             self.mPress[0]=round(float(event.xdata),self.numPrecisionX)
             self.yVal = round(float(event.ydata),self.numPrecisionY)
@@ -328,16 +335,17 @@ class GraphWidget(QtGui.QWidget):
         The xData is captured when the left mouse button is released on the canvas.
         The new data point is added to the history and mouse pressed is assigned None
         """
-#        re-look at this logic --seems to be a flaw somewhere
+        #re-look at this logic --seems to be a flaw somewhere
         if not(event.ydata == None):
             self.mRelease[0]=round(float(event.ydata),self.numPrecisionY)
         
-#        append the new point to the history if the last item in history differs
-#        from the new point
+        #append the new point to the history if the last item in history differs
+        #from the new point
         if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
             self.historyList[self.par].append(self.parVals[self.par][:])
             
         self.mPress[0]=None
+#                self.mRelease[0]=None
 
 
     def getMotion(self,event):
@@ -352,9 +360,9 @@ class GraphWidget(QtGui.QWidget):
         
         *
         """
-#        whilst the left mouse button is being clicked and mouse pointer hasnt (why not use mPress=None instead of event.button = 1)
-#        moved out of the figure canvas, capture the VROT (y-value) during mouse
-#        movement and call re-draw graph
+        #whilst the left mouse button is being clicked and mouse pointer hasnt (why not use mPress=None instead of event.button = 1)
+        #moved out of the figure canvas, capture the VROT (y-value) during mouse
+        #movement and call re-draw graph
         if (event.button == 1) and not(event.ydata == None):
             self.mMotion[0]=round(float(event.ydata),self.numPrecisionY)
             self.plotFunc()
@@ -376,26 +384,59 @@ class GraphWidget(QtGui.QWidget):
         undoKey = event.key
 
         if str.lower(undoKey.encode('ascii','ignore')) == "ctrl+z":
-#            history list musn't be empty
-            if len(self.historyList[self.par])>1:
-                self.historyList[self.par].pop()
-                tempHistoryList = self.historyList[self.par][len(self.historyList[self.par])-1]
-#                re-assign parVal to hold last list values in history list dictionary
-#                and re-draw graph
-                for i in range(len(self.parVals[self.par])):
-                    self.parVals[self.par][i]=round(tempHistoryList[i],self.numPrecisionY)
-
-                if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
-                    self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
-                else:
-                    self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+            
+            if (len(self.historyKeys)>1):
                 
-                self.key = "Yes"
-                self.plotFunc()
+            #history list musn't be empty
+        
+                if len(self.historyList[self.historyKeys[-1][0]])>1:
+
+                    self.historyList[self.historyKeys[-1][0]].pop()
+                    tempHistoryList = self.historyList[self.historyKeys[-1][0]][-1]
+                    #re-assign parVal to hold last list values in history list dictionary
+                    #and re-draw graph
+                    for i in range(len(self.parVals[self.historyKeys[-1][0]])):
+                        self.parVals[self.historyKeys[-1][0]][i]=round(tempHistoryList[i],self.numPrecisionY)
+                    if max(self.parVals[self.historyKeys[-1][0]])<=0:
+                        self.yScale = [-100,100]
+                    elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
+                        self.yScale = [int(ceil(-2*max(self.parVals[self.historyKeys[-1][0]]))),int(ceil(2*max(self.parVals[self.historyKeys[-1][0]])))]
+                    else:
+                        self.yScale = [int(ceil(min(self.parVals[self.historyKeys[-1][0]])-0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]])))),int(ceil(max(self.parVals[self.historyKeys[-1][0]])+0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))))]
+                    
+                    self.key = "Yes"
+                    self.plotFunc()
+                else:
+                    self.historyKeys.pop()
+                    self.par = self.historyKeys[-1][0]
+                    self.unitMeas = self.historyKeys[-1][-1]
+
+                    if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
+                        self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
+                    else:
+                        self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+                    
+                    self.key = "Yes"
+                    self.plotFunc()
             else:
-#                pop up a messageBox saying history list is exhausted
+                if (len(self.historyKeys)==1) and (len(self.historyList[self.historyKeys[-1][0]])>1):
+                    self.historyList[self.historyKeys[-1][0]].pop()
+                    tempHistoryList = self.historyList[self.historyKeys[-1][0]][-1]
+                    for i in range(len(self.parVals[self.historyKeys[-1][0]])):
+                        self.parVals[self.historyKeys[-1][0]][i]=round(tempHistoryList[i],self.numPrecisionY)
+                    if max(self.parVals[self.historyKeys[-1][0]])<=0:
+                        self.yScale = [-100,100]
+                    elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
+                        self.yScale = [int(ceil(-2*max(self.parVals[self.historyKeys[-1][0]]))),int(ceil(2*max(self.parVals[self.historyKeys[-1][0]])))]
+                    else:
+                        self.yScale = [int(ceil(min(self.parVals[self.historyKeys[-1][0]])-0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]])))),int(ceil(max(self.parVals[self.historyKeys[-1][0]])+0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))))]
+                    
+                    self.key = "Yes"
+                    self.plotFunc()                    
+                else:
+                #pop up a messageBox saying history list is exhausted
 #                print("history is empty")
-                self.showInformation()
+                    self.showInformation()
        
          
     def showInformation(self):
@@ -462,15 +503,15 @@ class GraphWidget(QtGui.QWidget):
                 axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
             ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
             ax.set_title('Plot')
-#            ax.set_xticks(self.parVals['RADI'])
+            #ax.set_xticks(self.parVals['RADI'])
             self.canvas.draw() 
             self.scaleChange = "No"
         
         if self.key=="Yes":
             self.firstPlot()
             
-#        this re-plots the graph as long as the mouse is in motion and the right
-#        data point is clicked
+        #this re-plots the graph as long as the mouse is in motion and the right
+        #data point is clicked
         else:
             for j in range(len(self.parVals['RADI'])):
                 if (self.mPress[0] < (self.parVals['RADI'][j])+3) and (self.mPress[0] > (self.parVals['RADI'][j])-3) and (self.mRelease[0]==None):
@@ -502,7 +543,7 @@ class GraphWidget(QtGui.QWidget):
                         axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
                     ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
                     ax.set_title('Plot')
-#                    ax.set_xticks(self.parVals['RADI'])
+                  #  ax.set_xticks(self.parVals['RADI'])
 #                    ax.set_yticks(np.arange(min(self.parVals[self.par]),max(self.parVals[self.par])+1,200))
                     self.canvas.draw()                
 
@@ -521,19 +562,19 @@ class GraphWidget(QtGui.QWidget):
         The .def file would be re-opened and updated per the new values that
         are contained in the parVal* variable 
         """
-#        instead of specific precision, call precision function for each param
+        #instead of specific precision, call precision function for each param
         if sKey == 'RADI':
             r = self.numPrecisionX
         else:
             r = self.numPrecisionY
             
-#        get the new values and format it as [0 20 30 40 50...]
+        #get the new values and format it as [0 20 30 40 50...]
         txt =""
         for i in range(len(newVals)):
             txt = txt+" " +'{0:.{1}f}'.format(newVals[i], r)
 
-#        txt = txt+" " + str(newVals[i])
-#        put this block of code in a try except block
+            #txt = txt+" " + str(newVals[i])
+        #put this block of code in a try except block
         tmpFile=[]
         with open(self.fileName,'a') as f:
             status = False
@@ -615,10 +656,12 @@ class GraphWidget(QtGui.QWidget):
         else:
             r = self.numPrecisionY
             
-#        get the new values and format it as [0 20 30 40 50...]
+        #get the new values and format it as [0 20 30 40 50...]
         txt =""
         for i in range(len(newVals)):
             txt = txt+" " +'{0:.{1}f}'.format(newVals[i], r)
+
+            #txt = txt+" " + str(newVals[i])
 
         tmpFile=[]
         
@@ -718,6 +761,8 @@ class GraphWidget(QtGui.QWidget):
         fileName = os.getcwd()
         fileName = fileName+"/"+self.INSET
         if os.path.isfile(fileName):
+            for i in self.parVals:
+                self.saveFile(self.parVals[i],i)
             os.system("gnome-terminal -e 'bash -c \"/home/samuel/software/TiRiFiC/tirific_2.3.4/bin/tirific deffile = "+self.fileName+"; exec bash\"'")
         else:
             self.tirificMessage()
@@ -732,33 +777,37 @@ class GraphWidget(QtGui.QWidget):
 
         self.getParameter(self.data)
 
-        self.numPrecisionY = self.numPrecision(self.parVals['VROT'][:])
+        self.numPrecisionY = self.numPrecision(self.parVals[self.par][:])
         self.numPrecisionX = self.numPrecision(self.parVals['RADI'][:])
         
-#        ensure there are the same points for VROT as there are for RADI as specified in NUR parameter
-        diff = self.NUR-len(self.parVals[self.par])
-        lastItemIndex = len(self.parVals[self.par])-1
-        if diff == self.NUR:
-            for i in range(int(diff)):
-                self.parVals[self.par].append(0.0)
-        elif diff > 0 and diff < self.NUR:
-            for i in range(int(diff)):
-                self.parVals[self.par].append(self.parVals[self.par][lastItemIndex])
+#        ensure there are the same points for parameter as there are for RADI as specified in NUR parameter
+#        diff = self.NUR-len(self.parVals[self.par])
+#        lastItemIndex = len(self.parVals[self.par])-1
+#        if diff == self.NUR:
+#            for i in range(int(diff)):
+#                self.parVals[self.par].append(0.0)
+#        elif diff > 0 and diff < self.NUR:
+#            for i in range(int(diff)):
+#                self.parVals[self.par].append(self.parVals[self.par][lastItemIndex])
         
-        self.historyList.clear()
         for i in self.parVals:
-            self.historyList[i] = [self.parVals[i][:]]
+#                self.saveFile(self.parVals[i],i)
+            if not(self.historyList[i][len(self.historyList[i])-1]==self.parVals[i][:]):
+                self.historyList[i].append(self.parVals[i][:])
+#        self.historyList.clear()
+#        for i in self.parVals:
+#            self.historyList[i] = [self.parVals[i][:]]
             
-#        defining the x and y scale for plotting
+        #defining the x and y scale for plotting
         if (max(self.parVals['RADI'])-min(self.parVals['RADI']))<=100:
             self.xScale = [int(ceil(-2*max(self.parVals['RADI']))),int(ceil(2*max(self.parVals['RADI'])))]                           
         else:
             self.xScale = [int(ceil(min(self.parVals['RADI'])-0.1*(max(self.parVals['RADI'])-min(self.parVals['RADI'])))),int(ceil(max(self.parVals['RADI'])+0.1*(max(self.parVals['RADI'])-min(self.parVals['RADI']))))]                            
 
-        if (max(self.parVals['VROT'])-min(self.parVals['VROT']))<=100:
-            self.yScale = [int(ceil(-2*max(self.parVals['VROT']))),int(ceil(2*max(self.parVals['VROT'])))]
+        if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
+            self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
         else:
-            self.yScale = [int(ceil(min(self.parVals['VROT'])-0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT'])))),int(ceil(max(self.parVals['VROT'])+0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT']))))] 
+            self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))] 
         self.firstPlot()
         
     def animate(self,i):
@@ -826,9 +875,9 @@ class SMWindow(QtGui.QWidget):
         self.hbox = QtGui.QHBoxLayout()
     
         self.radioFree = QtGui.QRadioButton("Free")
-#        self.radioFree.clicked.connect(self.getOptF)
+       # self.radioFree.clicked.connect(self.getOptF)
         self.radioViewG = QtGui.QRadioButton("Beyond Viewgraph")
-#        self.radioViewG.clicked.connect(self.getOptV)
+        #self.radioViewG.clicked.connect(self.getOptV)
         
         self.hbox.addWidget(self.radioFree)
         self.hbox.addWidget(self.radioViewG)
@@ -836,10 +885,10 @@ class SMWindow(QtGui.QWidget):
         self.fbox.addRow(QtGui.QLabel("Scale Behaviour"),self.hbox)
        
         self.btnUpdate = QtGui.QPushButton('Update', self)
-#        self.btnUpdate.clicked.connect(self.updateScale)
+       # self.btnUpdate.clicked.connect(self.updateScale)
         self.btnUpdate.minimumSize()
         self.btnCancel = QtGui.QPushButton('Cancel', self)
-#        self.btnCancel.clicked.connect(self.close)
+        #self.btnCancel.clicked.connect(self.close)
         self.btnCancel.minimumSize()
         self.fbox.addRow(self.btnUpdate,self.btnCancel) 
     
@@ -995,42 +1044,45 @@ class mainWindow(QtGui.QMainWindow):
         
    def paramDef(self):
        
-       if len(self.ps.parameter.text())>0 and not(str(self.ps.parameter) == self.gw.par):
-           self.gw.par = str(self.ps.parameter.text())
+       if len(self.ps.parameter.text())>0 and not(str.upper(str(self.ps.parameter)) == str.upper(self.gw.par)):
+           self.gw.par = str.upper(str(self.ps.parameter.text()))
            self.gw.unitMeas = str(self.ps.unitMeasurement.text())
-          
-#           this evaluates to e.g. VROT = [20,30,40,50]
-           exec(self.gw.par + "= self.gw.getParameter(self.gw.par,self.gw.data)") in globals(), locals()
-
            
-           self.gw.numPrecisionY = self.gw.numPrecision(self.gw.parVals[self.gw.par])
-           
-#           this evaluates to the content of the variable in par; e.g. tmp = VROT[:]
-           tmp = eval(self.gw.par)[:]
-           
-           diff = self.gw.NUR-len(tmp)
-           lastItemIndex = len(tmp)-1
-           if diff == self.gw.NUR:
-               for i in range(int(diff)):
-                   self.gw.parVals[self.gw.par].append(0.0)
-           elif diff > 0 and diff < self.gw.NUR:
-               for i in range(int(diff)):
-                   self.gw.parVals[self.gw.par].append(tmp[lastItemIndex])  
+           if self.gw.par in self.gw.parVals:
+               self.gw.numPrecisionY = self.gw.numPrecision(self.gw.parVals[self.gw.par][:])
+               diff = self.gw.NUR-len(self.gw.parVals[self.gw.par])
+               if diff == self.gw.NUR:
+                   for i in range(diff):
+                       self.gw.parVals[self.gw.par].append(0.0)
+               elif diff > 0 and diff < self.gw.NUR:
+                   for i in range(diff):
+                       self.gw.parVals[self.gw.par].append(self.gw.parVals[self.gw.par][-1])
+           else:
+               zeroVals = []
+               self.gw.numPrecisionY = 1
+               for i in range(self.gw.NUR):
+                   zeroVals.append(0.0)
+               self.gw.parVals[self.gw.par] = zeroVals[:]
+ 
+           if self.gw.par in self.gw.historyList:
+               if (len(self.gw.historyList[self.gw.par])<1) or ((len(self.gw.historyList[self.gw.par])>0) and not(self.gw.historyList[self.gw.par][-1]==self.gw.parVals[self.gw.par][:])):
+                   self.gw.historyList[self.gw.par].append(self.gw.parVals[self.gw.par][:])
+    
+           else:
+               self.gw.historyList[self.gw.par] = [self.gw.parVals[self.gw.par][:]]
             
-#           self.gw.historyList[self.gw.par] = [self.gw.parVals[self.gw.par][:]]
-            
-#           print (historyList)
+            #print (historyList)
            if max(self.gw.parVals[self.gw.par])<=0:
                self.gw.yScale = [-100,100]
            elif (max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par]))<=100:
                self.gw.yScale = [int(ceil(-2*max(self.gw.parVals[self.gw.par]))),int(ceil(2*max(self.gw.parVals[self.gw.par])))]
            else:
                self.gw.yScale = [int(ceil(min(self.gw.parVals[self.gw.par])-0.1*(max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par])))),int(ceil(max(self.gw.parVals[self.gw.par])+0.1*(max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par]))))]
-            
+           
+           self.gw.historyKeys.append([self.gw.par,self.gw.unitMeas])
            self.gw.key = "Yes"
            self.gw.plotFunc()
            self.ps.close()
-
 
 def main():
     app = QtGui.QApplication(sys.argv)
@@ -1045,3 +1097,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
