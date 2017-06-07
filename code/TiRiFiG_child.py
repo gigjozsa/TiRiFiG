@@ -388,7 +388,7 @@ class GraphWidget(QtGui.QWidget):
             if (len(self.historyKeys)>1):
                 
             #history list musn't be empty
-        
+         
                 if len(self.historyList[self.historyKeys[-1][0]])>1:
 
                     self.historyList[self.historyKeys[-1][0]].pop()
@@ -411,10 +411,12 @@ class GraphWidget(QtGui.QWidget):
                     self.par = self.historyKeys[-1][0]
                     self.unitMeas = self.historyKeys[-1][-1]
 
-                    if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
-                        self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
+                    if max(self.parVals[self.historyKeys[-1][0]])<=0:
+                        self.yScale = [-100,100]
+                    elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
+                        self.yScale = [int(ceil(-2*max(self.parVals[self.historyKeys[-1][0]]))),int(ceil(2*max(self.parVals[self.historyKeys[-1][0]])))]
                     else:
-                        self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+                        self.yScale = [int(ceil(min(self.parVals[self.historyKeys[-1][0]])-0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]])))),int(ceil(max(self.parVals[self.historyKeys[-1][0]])+0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))))]
                     
                     self.key = "Yes"
                     self.plotFunc()
