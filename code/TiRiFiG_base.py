@@ -11,6 +11,7 @@ from PyQt4 import QtGui, QtCore
 import os,sys
 from subprocess import Popen as run
 from math import ceil 
+import collections
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -39,7 +40,11 @@ class GraphWidget(QtGui.QWidget):
     data = []
     parVals = {}
     historyList = {}
-    historyKeys= [['VROT','km/s']]
+    historyListRedo = {}
+    historyKeys = [['VROT','km/s',1]]
+    historyKeysRedo = [[]]
+    historyKeysDup = {'VROT':1}
+    historyKeysDupRedo = {}
     xScale=[0,0]
     yScale=[0,0]
        
@@ -48,9 +53,6 @@ class GraphWidget(QtGui.QWidget):
     mRelease=['None']
     mMotion=[-5]
     yVal = 0
-    
-    
-    
     
     
     def __init__(self):
@@ -339,13 +341,17 @@ class GraphWidget(QtGui.QWidget):
         #re-look at this logic --seems to be a flaw somewhere
         if not(event.ydata == None):
             self.mRelease[0]=round(float(event.ydata),self.numPrecisionY)
+#            self.historyKeys[[i for i in range(len(self.historyKeys)-1,-1,-1) if self.historyKeys[i][0] == self.par][0]][2]+=1
         
         #append the new point to the history if the last item in history differs
         #from the new point
         if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
             self.historyList[self.par].append(self.parVals[self.par][:])
+            self.historyKeys[[i for i in range(len(self.historyKeys)-1,-1,-1) if self.historyKeys[i][0] == self.par][0]][2]+=1
+            self.historyListRedo.clear()
             
         self.mPress[0]=None
+      
 #                self.mRelease[0]=None
 
 
@@ -386,40 +392,77 @@ class GraphWidget(QtGui.QWidget):
 
         if str.lower(undoKey.encode('ascii','ignore')) == "ctrl+z":
             
+
             if (len(self.historyKeys)>1):
                 
-            #history list musn't be empty
-        
-                if len(self.historyList[self.historyKeys[-1][0]])>1:
-
-                    self.historyList[self.historyKeys[-1][0]].pop()
-                    tempHistoryList = self.historyList[self.historyKeys[-1][0]][-1]
-                    #re-assign parVal to hold last list values in history list dictionary
-                    #and re-draw graph
-                    for i in range(len(self.parVals[self.historyKeys[-1][0]])):
-                        self.parVals[self.historyKeys[-1][0]][i]=round(tempHistoryList[i],self.numPrecisionY)
-                    if max(self.parVals[self.historyKeys[-1][0]])<=0:
-                        self.yScale = [-100,100]
-                    elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
-                        self.yScale = [int(ceil(-2*max(self.parVals[self.historyKeys[-1][0]]))),int(ceil(2*max(self.parVals[self.historyKeys[-1][0]])))]
-                    else:
-                        self.yScale = [int(ceil(min(self.parVals[self.historyKeys[-1][0]])-0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]])))),int(ceil(max(self.parVals[self.historyKeys[-1][0]])+0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))))]
+                if self.historyKeysDup[self.historyKeys[-1][0]] > 1:
                     
-                    self.key = "Yes"
-                    self.plotFunc()
+                    if self.historyKeys[[i for i in range(len(self.historyKeys)-1,-1,-1) if self.historyKeys[i][0] == self.par][0]][2] == 0:
+                        self.historyKeysDup[self.par]-=1
+                        self.historyKeys.pop()
+                        self.par = self.historyKeys[-1][0]
+                        self.unitMeas = self.historyKeys[-1][1]
+                        if max(self.parVals[self.historyKeys[-1][0]])<=0:
+                            self.yScale = [-100,100]
+                        elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
+                            self.yScale =  [int(ceil(-2*max(self.parVals[self.historyKeys[-1][0]]))),int(ceil(2*max(self.parVals[self.historyKeys[-1][0]])))]
+                        else:
+                            self.yScale = [int(ceil(min(self.parVals[self.historyKeys[-1][0]])-0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]])))),int(ceil(max(self.parVals[self.historyKeys[-1][0]])+0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))))]
+                        
+                        self.key = "Yes"
+                        self.plotFunc()
+                    else:
+                        self.historyList[self.historyKeys[-1][0]].pop()
+                        tempHistoryList = self.historyList[self.historyKeys[-1][0]][-1]
+                        for i in range(len(self.parVals[self.historyKeys[-1][0]])):
+                            self.parVals[self.historyKeys[-1][0]][i]=round(tempHistoryList[i],self.numPrecisionY)
+                        if max(self.parVals[self.historyKeys[-1][0]])<=0:
+                            self.yScale = [-100,100]
+                        elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
+                            self.yScale =  [int(ceil(-2*max(self.parVals[self.historyKeys[-1][0]]))),int(ceil(2*max(self.parVals[self.historyKeys[-1][0]])))]
+                        else:
+                            self.yScale = [int(ceil(min(self.parVals[self.historyKeys[-1][0]])-0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]])))),int(ceil(max(self.parVals[self.historyKeys[-1][0]])+0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))))]
+                    
+                        #investigate on using break statement in the list comprehension
+                        self.key = "Yes"
+                        self.plotFunc()
+                        self.historyKeys[[i for i in range(len(self.historyKeys)-1,-1,-1) if self.historyKeys[i][0] == self.par][0]][2]-=1
+                                           
                 else:
-                    self.historyKeys.pop()
-                    self.par = self.historyKeys[-1][0]
-                    self.unitMeas = self.historyKeys[-1][-1]
-
-                    if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
-                        self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
+        
+                    if len(self.historyList[self.historyKeys[-1][0]])>1:
+    
+                        self.historyList[self.historyKeys[-1][0]].pop()
+                        tempHistoryList = self.historyList[self.historyKeys[-1][0]][-1]
+                        #re-assign parVal to hold last list values in history list dictionary
+                        #and re-draw graph
+                        for i in range(len(self.parVals[self.historyKeys[-1][0]])):
+                            self.parVals[self.historyKeys[-1][0]][i]=round(tempHistoryList[i],self.numPrecisionY)
+                        if max(self.parVals[self.historyKeys[-1][0]])<=0:
+                            self.yScale = [-100,100]
+                        elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
+                            self.yScale = [int(ceil(-2*max(self.parVals[self.historyKeys[-1][0]]))),int(ceil(2*max(self.parVals[self.historyKeys[-1][0]])))]
+                        else:
+                            self.yScale = [int(ceil(min(self.parVals[self.historyKeys[-1][0]])-0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]])))),int(ceil(max(self.parVals[self.historyKeys[-1][0]])+0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))))]
+                        
+                        self.key = "Yes"
+                        self.plotFunc()
                     else:
-                        self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+                        self.historyKeys.pop()
+                        self.par = self.historyKeys[-1][0]
+                        self.unitMeas = self.historyKeys[-1][1]
+    
+                        if max(self.parVals[self.historyKeys[-1][0]])<=0:
+                            self.yScale = [-100,100]
+                        elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
+                            self.yScale = [int(ceil(-2*max(self.parVals[self.historyKeys[-1][0]]))),int(ceil(2*max(self.parVals[self.historyKeys[-1][0]])))]
+                        else:
+                            self.yScale = [int(ceil(min(self.parVals[self.historyKeys[-1][0]])-0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]])))),int(ceil(max(self.parVals[self.historyKeys[-1][0]])+0.1*(max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))))]
                     
-                    self.key = "Yes"
-                    self.plotFunc()
+                        self.key = "Yes"
+                        self.plotFunc()
             else:
+
                 if (len(self.historyKeys)==1) and (len(self.historyList[self.historyKeys[-1][0]])>1):
                     self.historyList[self.historyKeys[-1][0]].pop()
                     tempHistoryList = self.historyList[self.historyKeys[-1][0]][-1]
@@ -436,7 +479,7 @@ class GraphWidget(QtGui.QWidget):
                     self.plotFunc()                    
                 else:
                 #pop up a messageBox saying history list is exhausted
-#                print("history is empty")
+#                
                     self.showInformation()
        
          
@@ -471,6 +514,7 @@ class GraphWidget(QtGui.QWidget):
         ax.clear()
         ax.set_xlim(self.xScale[0],self.xScale[1])            
         ax.set_ylim(self.yScale[0],self.yScale[1])
+
         for axes in self.figure.get_axes():
             axes.set_xlabel("RADI (arcsec)")
             axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
@@ -521,7 +565,7 @@ class GraphWidget(QtGui.QWidget):
                     ax = self.figure.add_subplot(111)
                     ax.clear()
                     ax.set_xlim(self.xScale[0],self.xScale[1])            
-#                    print (self.choice)
+#                    
                     if self.choice == "Beyond Viewgraph":
                         
                         if self.mMotion[0] >= 0.85*self.yScale[1]:
@@ -846,24 +890,32 @@ class GraphWidget(QtGui.QWidget):
 
 
 class SMWindow(QtGui.QWidget):
-    
-    def __init__(self):
+#    xMinVal = 0
+#    xMaxVal = 0
+#    yMinVal = 0
+#    yMaxVal = 0
+    def __init__(self,xMinVal,xMaxVal,yMinVal,yMaxVal,par):
         super(SMWindow, self).__init__()
-        
+        self.xMinVal = xMinVal
+        self.xMaxVal = xMaxVal
+        self.yMinVal = yMinVal
+        self.yMaxVal = yMaxVal
+        self.par = par
+
 
         self.xMin = QtGui.QLineEdit()
         self.xMin.minimumSize()
-        self.xMin.setPlaceholderText("RADI min")        
+        self.xMin.setPlaceholderText("RADI min ("+str(self.xMinVal)+")")        
         self.xMax = QtGui.QLineEdit()
         self.xMax.minimumSize()
-        self.xMax.setPlaceholderText("RADI max")
+        self.xMax.setPlaceholderText("RADI max ("+str(self.xMaxVal)+")")  
        
         self.yMin = QtGui.QLineEdit()
         self.yMin.minimumSize()
-        self.yMin.setPlaceholderText(GraphWidget.par+" min") 
+        self.yMin.setPlaceholderText(self.par+" min ("+str(self.yMinVal)+")")
         self.yMax = QtGui.QLineEdit()
         self.yMax.minimumSize()
-        self.yMax.setPlaceholderText(GraphWidget.par+" max")
+        self.yMax.setPlaceholderText(self.par+" max ("+str(self.yMaxVal)+")")
     
     
         self.fbox = QtGui.QFormLayout(self)
@@ -898,6 +950,13 @@ class SMWindow(QtGui.QWidget):
         self.setWindowTitle("Scale Manager")
 #        self.setMinimumSize(1280, 720)
         self.minimumSizeHint()
+        
+#    def getGwVals(self,xMin,xMax,yMin,yMax,par):
+#        print par, xMin, yMin
+#        self.xMin.setPlaceholderText("RADI min ("+str(xMin)+")")
+#        self.xMax.setPlaceholderText("RADI max ("+str(xMax)+")")
+#        self.yMin.setPlaceholderText(par+" min ("+str(yMin)+")")
+#        self.yMax.setPlaceholderText(par+" max ("+str(yMax)+")")
         
 
 class ParamSpec(QtGui.QWidget):
@@ -938,16 +997,16 @@ class ParamSpec(QtGui.QWidget):
 
 
 class mainWindow(QtGui.QMainWindow):
-    
-   def __init__(self):
+    def __init__(self):
         super(mainWindow, self).__init__()
         self.initUI()
     
-   def initUI(self):
+    def initUI(self):
         
         self.gw = GraphWidget()
         self.setCentralWidget(self.gw)
-        self.sm = SMWindow()
+ 
+        self.sm = SMWindow(self.gw.xScale[0],self.gw.xScale[1],self.gw.yScale[0],self.gw.yScale[1],self.gw.par)
         self.ps = ParamSpec()
         self.setMinimumSize(1280, 720)
 #        self.setGeometry(600, 300, 1000, 600)
@@ -956,8 +1015,9 @@ class mainWindow(QtGui.QMainWindow):
         self.createMenus()
         self.setWindowTitle('TiRiFiG') 
         self.gw.center()
+        
        
-   def createActions(self):
+    def createActions(self):
         self.exitAction = QtGui.QAction("&Exit", self)
 #        self.exitAction.setShortcut("Ctrl+Q")
         self.exitAction.setStatusTip('Leave the app')
@@ -987,20 +1047,20 @@ class mainWindow(QtGui.QMainWindow):
         
         self.scaleMan = QtGui.QAction("&Scale Manager",self)
         self.scaleMan.setStatusTip('Manages behaviour of scale and min and max values')
-        self.scaleMan.triggered.connect(self.sm.show)
+        self.scaleMan.triggered.connect(self.reloadSM)
         
         self.paraDef = QtGui.QAction("&Parameter Definition",self)
         self.paraDef.setStatusTip('Determines which parameter is plotted on the y-axis')
         self.paraDef.triggered.connect(self.ps.show)
         
-        self.sm.radioFree.clicked.connect(self.getOptF)
-        self.sm.radioViewG.clicked.connect(self.getOptV)
-        self.sm.btnUpdate.clicked.connect(self.updateScale)
-        self.sm.btnCancel.clicked.connect(self.sm.close)
-        self.ps.btnOK.clicked.connect(self.paramDef)
-        self.ps.btnCancel.clicked.connect(self.close)
+#        self.sm.radioFree.clicked.connect(self.getOptF)
+#        self.sm.radioViewG.clicked.connect(self.getOptV)
+#        self.sm.btnUpdate.clicked.connect(self.updateScale)
+#        self.sm.btnCancel.clicked.connect(self.sm.close)
+#        self.ps.btnOK.clicked.connect(self.paramDef)
+#        self.ps.btnCancel.clicked.connect(self.close)
 
-   def createMenus(self):
+    def createMenus(self):
         mainMenu = self.menuBar()
         
         self.fileMenu = mainMenu.addMenu('&File')
@@ -1018,14 +1078,24 @@ class mainWindow(QtGui.QMainWindow):
         self.prefMenu = mainMenu.addMenu('&Preferences')
         self.prefMenu.addAction(self.scaleMan)
         self.prefMenu.addAction(self.paraDef)
-
-   def getOptF(self):
-        self.gw.choice = "Free"
-    
-   def getOptV(self):
-        self.gw.choice = "Beyond Viewgraph"
         
-   def updateScale(self):
+    def reloadSM(self):
+        self.sm = SMWindow(self.gw.xScale[0],self.gw.xScale[1],self.gw.yScale[0],self.gw.yScale[1],self.gw.par)
+        self.sm.show()
+        self.sm.radioFree.clicked.connect(self.getOptF)
+        self.sm.radioViewG.clicked.connect(self.getOptV)
+        self.sm.btnUpdate.clicked.connect(self.updateScale)
+        self.sm.btnCancel.clicked.connect(self.sm.close)
+        self.ps.btnOK.clicked.connect(self.paramDef)
+        self.ps.btnCancel.clicked.connect(self.close)
+    
+    def getOptF(self):
+        self.gw.choice = "Free"
+
+    def getOptV(self):
+        self.gw.choice = "Beyond Viewgraph"
+         
+    def updateScale(self):
 
         if len(self.sm.yMin.text())>0:
             self.gw.yScale[0] = int(ceil(float(self.sm.yMin.text())))
@@ -1043,7 +1113,7 @@ class mainWindow(QtGui.QMainWindow):
         self.gw.plotFunc()      
         self.sm.close()        
         
-   def paramDef(self):
+    def paramDef(self):
        
        if len(self.ps.parameter.text())>0 and not(str.upper(str(self.ps.parameter)) == str.upper(self.gw.par)):
            self.gw.par = str.upper(str(self.ps.parameter.text()))
@@ -1064,7 +1134,11 @@ class mainWindow(QtGui.QMainWindow):
                for i in range(self.gw.NUR):
                    zeroVals.append(0.0)
                self.gw.parVals[self.gw.par] = zeroVals[:]
- 
+               
+               
+           #if the parameter specified is not in parVals, then obviously it isnt in historyList
+           #therefore there's no need for another if statement here
+           #evaluate the statements in the if-else condition above
            if self.gw.par in self.gw.historyList:
                if (len(self.gw.historyList[self.gw.par])<1) or ((len(self.gw.historyList[self.gw.par])>0) and not(self.gw.historyList[self.gw.par][-1]==self.gw.parVals[self.gw.par][:])):
                    self.gw.historyList[self.gw.par].append(self.gw.parVals[self.gw.par][:])
@@ -1072,7 +1146,6 @@ class mainWindow(QtGui.QMainWindow):
            else:
                self.gw.historyList[self.gw.par] = [self.gw.parVals[self.gw.par][:]]
             
-            #print (historyList)
            if max(self.gw.parVals[self.gw.par])<=0:
                self.gw.yScale = [-100,100]
            elif (max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par]))<=100:
@@ -1080,7 +1153,11 @@ class mainWindow(QtGui.QMainWindow):
            else:
                self.gw.yScale = [int(ceil(min(self.gw.parVals[self.gw.par])-0.1*(max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par])))),int(ceil(max(self.gw.parVals[self.gw.par])+0.1*(max(self.gw.parVals[self.gw.par])-min(self.gw.parVals[self.gw.par]))))]
            
-           self.gw.historyKeys.append([self.gw.par,self.gw.unitMeas])
+           if self.gw.par in [self.gw.historyKeys[i][0] for i in range(len(self.gw.historyKeys))]:
+               self.gw.historyKeys.append([self.gw.par,self.gw.unitMeas,0])
+           else:
+               self.gw.historyKeys.append([self.gw.par,self.gw.unitMeas,1])
+           self.gw.historyKeysDup = collections.Counter([self.gw.historyKeys[i][0] for i in range(len(self.gw.historyKeys))])
            self.gw.key = "Yes"
            self.gw.plotFunc()
            self.ps.close()
@@ -1092,7 +1169,7 @@ def main():
     GUI.show()
     
     ani = animation.FuncAnimation(GUI.gw.figure, GUI.gw.animate, interval=100)
-
+    
     app.exec_()
 
 
