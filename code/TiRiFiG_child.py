@@ -10,6 +10,7 @@ Created on Sat Feb  4 22:49:38 2017
 from PyQt4 import QtGui, QtCore
 import os,sys
 from subprocess import Popen as run
+from copy import deepcopy
 from math import ceil 
 import collections
 import matplotlib.pyplot as plt
@@ -25,34 +26,32 @@ style.use("ggplot")
 class GraphWidget(QtGui.QWidget):
     
     key = "Yes"
-    scaleChange = "No"
-    choice = "Beyond Viewgraph"
+    scaleChange = "No" ; scaleChangeR = 0
+    choice = "Beyond Viewgraph"; choiceR = 0
     INSET = 'None'
-    par = 'VROT'
-    unitMeas = 'km/s'
+    par = 'VROT'; parR  = 0
+    unitMeas = 'km/s'; unitMeasR = 0
     tmpDeffile = os.getcwd() + "/tmpDeffile.def"
     fileName = None
     
-    before = 0
-    numPrecisionY = 0
-    numPrecisionX = 0
-    NUR = 0
+    before = 0; beforeR = 0
+    numPrecisionY = 0; numPrecisionYR = 0
+    numPrecisionX = 0; numPrecisionXR = 0
+    NUR = 0;NURR = 0 
     data = []
-    parVals = {}
-    historyList = {}
-    historyListRedo = {}
-    historyKeys = [['VROT','km/s',1]]
-    historyKeysRedo = [[]]
-    historyKeysDup = {'VROT':1}
-    historyKeysDupRedo = {}
-    xScale=[0,0]
-    yScale=[0,0]
+    parVals = {}; parValsR = 0 
+    historyList = {}; historyListR = {}
+    historyKeys = [['VROT','km/s',1]]; historyKeysR = [[]]
+    historyKeysDup = {'VROT':1}; historyKeysDupR = {}
+    xScale=[0,0]; xScaleR=[0,0]
+    yScale=[0,0]; yScaleR=[0,0];
+    redo = []
        
     
-    mPress=[-5]
-    mRelease=['None']
-    mMotion=[-5]
-    yVal = 0
+    mPress=[-5]; mPressR = 0
+    mRelease=['None']; mReleaseR = 0
+    mMotion=[-5]; mMotionR = 0
+#    yVal = 0; yValR =0
     
     
     
@@ -323,7 +322,7 @@ class GraphWidget(QtGui.QWidget):
         #mouse release
         if (event.button == 1) and not(event.xdata == None):
             self.mPress[0]=round(float(event.xdata),self.numPrecisionX)
-            self.yVal = round(float(event.ydata),self.numPrecisionY)
+#            self.yVal = round(float(event.ydata),self.numPrecisionY)
             self.mRelease[0]=None
         
 
@@ -351,7 +350,13 @@ class GraphWidget(QtGui.QWidget):
         if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
             self.historyList[self.par].append(self.parVals[self.par][:])
             self.historyKeys[[i for i in range(len(self.historyKeys)-1,-1,-1) if self.historyKeys[i][0] == self.par][0]][2]+=1
-            self.historyListRedo.clear()
+            
+            self.scaleChangeR = 0; self.choiceR = 0; self.parR  = 0
+            self.unitMeasR = 0; self.beforeR = 0; self.numPrecisionYR = 0; self.numPrecisionXR = 0
+            self.NURR = 0; self.parValsR = 0; self.historyListR = {}; self.historyKeysR = [[]]
+            self.historyKeysDupR = {}; self.xScaleR=[0,0]; self.yScaleR=[0,0]; self.redo = []    
+            self.mPressR = 0; self.mReleaseR = 0; self.mMotionR = 0
+    
             
         self.mPress[0]=None
       
@@ -391,20 +396,57 @@ class GraphWidget(QtGui.QWidget):
         re-draws graph
         """
         
-        undoKey = event.key
-
-        if str.lower(undoKey.encode('ascii','ignore')) == "ctrl+z":
+        keyComb = event.key
+        
+        #comments below may not be that explanatory
+         
+        #when the key combination Ctrl + z is pressed
+        if str.lower(keyComb.encode('ascii','ignore')) == "ctrl+z":
             
-
+            #copy the existing state
+            self.scaleChangeR = self.scaleChange
+            self.choiceR = self.choice
+            self.parR = self.par
+            self.unitMeasR = self.unitMeas
+            self.beforeR = self.before
+            self.numPrecisionXR = self.numPrecisionX
+            self.numPrecisionYR = self.numPrecisionY
+            self.NURR = self.NUR
+            self.parValsR = deepcopy(self.parVals)
+            self.historyListR = deepcopy(self.historyList)
+            self.historyKeysR = self.historyKeys[:]
+            self.historyKeysDupR = deepcopy(self.historyKeysDup)
+            self.xScaleR = self.xScale[:]
+            self.yScaleR = self.yScale[:]
+            self.mMotionR = self.mMotion[:]
+            self.mPressR = self.mPress[:]
+            self.mReleaseR = self.mRelease[:]
+            
+            self.redo.append([self.scaleChangeR,self.choiceR,self.parR,
+                             self.unitMeasR, self.beforeR,self.numPrecisionXR,
+                             self.numPrecisionYR,self.NURR,self.parValsR,
+                             self.historyListR,self.historyKeysR,self.historyKeysDupR,
+                             self.xScaleR,self.yScaleR,self.mMotionR,self.mPressR,
+                             self.mReleaseR])
+            
+            
+            
+            #has the user chosen more than one parameter in the viewgraph
             if (len(self.historyKeys)>1):
                 
+                #has the current parameter been loaded more than once
                 if self.historyKeysDup[self.historyKeys[-1][0]] > 1:
                     
+                    #is the current duplicate exhausted of points shifted in viewgraph
                     if self.historyKeys[[i for i in range(len(self.historyKeys)-1,-1,-1) if self.historyKeys[i][0] == self.par][0]][2] == 0:
+                        #reduce duplicate value of specified parameter by one
                         self.historyKeysDup[self.par]-=1
+                        #remove that duplicate entry from the list of loaded parameters
                         self.historyKeys.pop()
+                        #set par & unit mesurement to new parameter in last element of historyKeys
                         self.par = self.historyKeys[-1][0]
                         self.unitMeas = self.historyKeys[-1][1]
+                        #define the plotting scale
                         if max(self.parVals[self.historyKeys[-1][0]])<=0:
                             self.yScale = [-100,100]
                         elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
@@ -415,10 +457,14 @@ class GraphWidget(QtGui.QWidget):
                         self.key = "Yes"
                         self.plotFunc()
                     else:
+                        #pop the last element(data point from historyList)
                         self.historyList[self.historyKeys[-1][0]].pop()
+                        #re-assign parVals to hold points in -1 index of historyList
                         tempHistoryList = self.historyList[self.historyKeys[-1][0]][-1]
                         for i in range(len(self.parVals[self.historyKeys[-1][0]])):
                             self.parVals[self.historyKeys[-1][0]][i]=round(tempHistoryList[i],self.numPrecisionY)
+                        
+                        #define scale for plotting
                         if max(self.parVals[self.historyKeys[-1][0]])<=0:
                             self.yScale = [-100,100]
                         elif (max(self.parVals[self.historyKeys[-1][0]])-min(self.parVals[self.historyKeys[-1][0]]))<=100:
@@ -431,10 +477,10 @@ class GraphWidget(QtGui.QWidget):
                         self.plotFunc()
                         self.historyKeys[[i for i in range(len(self.historyKeys)-1,-1,-1) if self.historyKeys[i][0] == self.par][0]][2]-=1
                                            
-                else:
-        
+                else:#there are no duplicates for this parameter
+                    #for that specific parameter, are there many points in history
                     if len(self.historyList[self.historyKeys[-1][0]])>1:
-    
+                        #comments same as above
                         self.historyList[self.historyKeys[-1][0]].pop()
                         tempHistoryList = self.historyList[self.historyKeys[-1][0]][-1]
                         #re-assign parVal to hold last list values in history list dictionary
@@ -450,7 +496,8 @@ class GraphWidget(QtGui.QWidget):
                         
                         self.key = "Yes"
                         self.plotFunc()
-                    else:
+                    else:#there is only one data point for this parameter in history 
+                        #comments for code below same as comments above
                         self.historyKeys.pop()
                         self.par = self.historyKeys[-1][0]
                         self.unitMeas = self.historyKeys[-1][1]
@@ -464,8 +511,9 @@ class GraphWidget(QtGui.QWidget):
                     
                         self.key = "Yes"
                         self.plotFunc()
-            else:
-
+            else:#only one parameter has been loaded in viewgraph
+            
+                #only one parameter is in history key and there are more than one point in the historyList for this parameters
                 if (len(self.historyKeys)==1) and (len(self.historyList[self.historyKeys[-1][0]])>1):
                     self.historyList[self.historyKeys[-1][0]].pop()
                     tempHistoryList = self.historyList[self.historyKeys[-1][0]][-1]
@@ -480,12 +528,40 @@ class GraphWidget(QtGui.QWidget):
                     
                     self.key = "Yes"
                     self.plotFunc()                    
-                else:
+                else:#number of elements in the history list for last parameter is 1
                 #pop up a messageBox saying history list is exhausted
 #                
                     self.showInformation()
-       
-         
+                    
+        elif str.lower(keyComb.encode('ascii','ignore')) == "ctrl+y":
+            
+         #copy the existing state
+            if len(self.redo)>0:
+                self.scaleChange = self.redo[-1][0]
+                self.choice = self.redo[-1][1]
+                self.par = self.redo[-1][2]
+                self.unitMeas = self.redo[-1][3]
+                self.before= self.redo[-1][4]
+                self.numPrecisionX = self.redo[-1][5]
+                self.numPrecisionY = self.redo[-1][6]
+                self.NUR = self.redo[-1][7]
+                self.parVals = deepcopy(self.redo[-1][8])
+                self.historyList = deepcopy(self.redo[-1][9])
+                self.historyKeys = self.redo[-1][10][:]
+                self.historyKeysDup = deepcopy(self.redo[-1][11])
+                self.xScale = self.redo[-1][12][:]
+                self.yScale = self.redo[-1][13][:]
+                self.mMotion = self.redo[-1][14][:]
+                self.mPress = self.redo[-1][15][:]
+                self.mRelease = self.redo[-1][16][:]
+            
+                self.redo.pop()
+                self.key="Yes"
+                self.plotFunc() 
+            else:
+                self.showInformation()
+                             
+                             
     def showInformation(self):
         """Show the information message
         
@@ -893,10 +969,7 @@ class GraphWidget(QtGui.QWidget):
 
 
 class SMWindow(QtGui.QWidget):
-#    xMinVal = 0
-#    xMaxVal = 0
-#    yMinVal = 0
-#    yMaxVal = 0
+
     def __init__(self,xMinVal,xMaxVal,yMinVal,yMaxVal,par):
         super(SMWindow, self).__init__()
         self.xMinVal = xMinVal
@@ -954,12 +1027,6 @@ class SMWindow(QtGui.QWidget):
 #        self.setMinimumSize(1280, 720)
         self.minimumSizeHint()
         
-#    def getGwVals(self,xMin,xMax,yMin,yMax,par):
-#        print par, xMin, yMin
-#        self.xMin.setPlaceholderText("RADI min ("+str(xMin)+")")
-#        self.xMax.setPlaceholderText("RADI max ("+str(xMax)+")")
-#        self.yMin.setPlaceholderText(par+" min ("+str(yMin)+")")
-#        self.yMax.setPlaceholderText(par+" max ("+str(yMax)+")")
         
 
 class ParamSpec(QtGui.QWidget):
@@ -1056,12 +1123,12 @@ class mainWindow(QtGui.QMainWindow):
         self.paraDef.setStatusTip('Determines which parameter is plotted on the y-axis')
         self.paraDef.triggered.connect(self.ps.show)
         
-#        self.sm.radioFree.clicked.connect(self.getOptF)
-#        self.sm.radioViewG.clicked.connect(self.getOptV)
-#        self.sm.btnUpdate.clicked.connect(self.updateScale)
-#        self.sm.btnCancel.clicked.connect(self.sm.close)
-#        self.ps.btnOK.clicked.connect(self.paramDef)
-#        self.ps.btnCancel.clicked.connect(self.close)
+        self.sm.radioFree.clicked.connect(self.getOptF)
+        self.sm.radioViewG.clicked.connect(self.getOptV)
+        self.sm.btnUpdate.clicked.connect(self.updateScale)
+        self.sm.btnCancel.clicked.connect(self.sm.close)
+        self.ps.btnOK.clicked.connect(self.paramDef)
+        self.ps.btnCancel.clicked.connect(self.close)
 
     def createMenus(self):
         mainMenu = self.menuBar()
