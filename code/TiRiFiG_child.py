@@ -7,18 +7,24 @@ Created on Sat Feb  4 22:49:38 2017
 """
 
 #libraries
+print "importing plot items"
+import matplotlib
+matplotlib.use("qt4Agg")
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+import matplotlib.pyplot as plt
+from matplotlib import style
+style.use("ggplot")
+
+print "importing GUI items"
 from PyQt4 import QtGui, QtCore
-import os,sys
+
+print "importing other things"
+import os,sys, threading
 from subprocess import Popen as run
 from copy import deepcopy
 from math import ceil 
 import collections
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib import style
-style.use("ggplot")
 
 
 #classes
@@ -81,17 +87,23 @@ class GraphWidget(QtGui.QWidget):
         grid.addWidget(self.toolbar, 1,0,1,2)
         grid.addWidget(self.canvas, 2,0,1,2)
 
-        #Import def Button
-        btn1 = QtGui.QPushButton('Import Def', self)
-        btn1.minimumSize()
+        #Import def and plot
+        btn1 = QtGui.QPushButton('', self)
+        btn1.setFixedSize(50,30)
+        btn1.setFlat(True)
+        btn1.setIcon(QtGui.QIcon('open_folder.png'))
+        btn1.setToolTip('Open .def file')
         btn1.clicked.connect(self.openDef)
-        grid.addWidget(btn1, 0,0)
+        grid.addWidget(btn1,0,0)
         
-#        Plot Button
-        btn2 = QtGui.QPushButton('Plot', self)
-        btn2.resize(btn2.sizeHint())    
-        btn2.clicked.connect(self.firstPlot) 
-        grid.addWidget(btn2, 0,1)
+        #Import 2nd .def file and plot
+#        btn2 = QtGui.QPushButton('', self)
+#        btn2.setFixedSize(50,30) 
+#        btn2.setFlat(True)
+#        btn2.setIcon(QtGui.QIcon('open_folder2.png'))
+#        btn2.setToolTip('Open Underlying .def file')
+#        btn2.clicked.connect(self.firstPlot) 
+#        grid.addWidget(btn2, 0,1)
             
     def center(self):
         """Centers the window
@@ -305,6 +317,9 @@ class GraphWidget(QtGui.QWidget):
                 self.yScale = [int(ceil(-2*max(self.parVals['VROT']))),int(ceil(2*max(self.parVals['VROT'])))]
             else:
                 self.yScale = [int(ceil(min(self.parVals['VROT'])-0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT'])))),int(ceil(max(self.parVals['VROT'])+0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT']))))]
+            
+            
+            self.firstPlot()
         
     def getClick(self,event):
         """Left mouse button is pressed
@@ -934,7 +949,7 @@ class GraphWidget(QtGui.QWidget):
             self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))] 
         self.firstPlot()
         
-    def animate(self,i):
+    def animate(self):
         fileName = os.getcwd()
         fileName += "/tmpDeffile.def"
         
@@ -947,6 +962,10 @@ class GraphWidget(QtGui.QWidget):
                 self.slotChangeData(self.tmpDeffile)
         else:
             pass
+        
+        t = threading.Timer(1.0, self.animate)
+    	t.daemon = True
+    	t.start()
         
         
     def openEditor(self):
@@ -1238,8 +1257,11 @@ def main():
         
     GUI.show()
     
-    ani = animation.FuncAnimation(GUI.gw.figure, GUI.gw.animate, interval=100)
-    
+    try:
+    	GUI.gw.animate()
+    except SystemExit:
+    	print "Done"
+
     app.exec_()
 
 
