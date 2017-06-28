@@ -96,14 +96,6 @@ class GraphWidget(QtGui.QWidget):
         btn1.clicked.connect(self.openDef)
         grid.addWidget(btn1,0,0)
         
-        #Import 2nd .def file and plot
-#        btn2 = QtGui.QPushButton('', self)
-#        btn2.setFixedSize(50,30) 
-#        btn2.setFlat(True)
-#        btn2.setIcon(QtGui.QIcon('open_folder2.png'))
-#        btn2.setToolTip('Open Underlying .def file')
-#        btn2.clicked.connect(self.firstPlot) 
-#        grid.addWidget(btn2, 0,1)
             
     def center(self):
         """Centers the window
@@ -395,8 +387,9 @@ class GraphWidget(QtGui.QWidget):
         #movement and call re-draw graph
         if (event.button == 1) and not(event.ydata == None):
             self.mMotion[0]=round(float(event.ydata),self.numPrecisionY)
+            print "%.2f <= %.2f: " %(self.mMotion[0],1.15*self.yScale[0]),self.mMotion[0] <= 1.15*self.yScale[0]
             self.plotFunc()
-    
+  
     def keyPressed(self,event):
         """Key is pressed
         
@@ -663,15 +656,22 @@ class GraphWidget(QtGui.QWidget):
                     if self.choice == "Beyond Viewgraph":
                         
                         if self.mMotion[0] >= 0.85*self.yScale[1]:
-                            self.yScale[1] += (self.yScale[1]*0.1) if self.yScale[1]>0 else (self.yScale[1]*-0.1)
-                            self.yScale[0] -= (self.yScale[0]*0.05) if self.yScale[0]>0 else (self.yScale[0]*-0.05)
-                        elif self.mMotion[0] <= 0.85*self.yScale[0]:
-                            self.yScale[0] -= (self.yScale[0]*0.1) if self.yScale[0]>0 else (self.yScale[0]*-0.1)
-                            self.yScale[1] += (self.yScale[1]*0.05) if self.yScale[1]>0 else (self.yScale[1]*-0.05)
+                        	self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+                    		
+#                        	self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
+#                            self.yScale[1] += (self.yScale[1]*0.5) if self.yScale[1]>0 else (self.yScale[1]*-0.5)
+#                            self.yScale[0] -= (self.yScale[0]*0.5) if self.yScale[0]>0 else (self.yScale[0]*-0.5)
+                        elif abs(self.mMotion[0]) <= abs(1.15*self.yScale[0]):
+                        	self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+                    		
+#                            self.yScale[0] -= (self.yScale[0]*0.5) if self.yScale[0]>0 else (self.yScale[0]*-0.5)
+#                            self.yScale[1] += (self.yScale[1]*0.5) if self.yScale[1]>0 else (self.yScale[1]*-0.5)
                         
                     elif self.choice == "Free":
                         if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
-                            self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
+                        	self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+                    		
+#                            self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
                         else:
                             self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
                     
@@ -1226,7 +1226,7 @@ class mainWindow(QtGui.QMainWindow):
                
                
            #if the parameter specified is not in parVals, then obviously it isnt in historyList
-           #therefore there's no need for another if statement here
+           #therefore there's no need for another "if statement" here
            #evaluate the statements in the if-else condition above
            if self.gw.par in self.gw.historyList:
                if (len(self.gw.historyList[self.gw.par])<1) or ((len(self.gw.historyList[self.gw.par])>0) and not(self.gw.historyList[self.gw.par][-1]==self.gw.parVals[self.gw.par][:])):
@@ -1252,19 +1252,20 @@ class mainWindow(QtGui.QMainWindow):
            self.ps.close()
 
 def main():
-    app = QtGui.QApplication(sys.argv)
-    GUI = mainWindow()
-        
-    GUI.show()
-    
-    try:
-    	GUI.gw.animate()
-    except SystemExit:
-    	print "Done"
+	if os.path.isfile(os.getcwd() + "/tmpDeffile.def"):
+		os.remove(os.getcwd() + "/tmpDeffile.def")
 
-    app.exec_()
+	app = QtGui.QApplication(sys.argv)
+	GUI = mainWindow()
+	GUI.show()
+
+	try:
+		GUI.gw.animate()
+	except SystemExit:
+		print "Done"
+
+	app.exec_()
 
 
 if __name__ == '__main__':
     main()
-
