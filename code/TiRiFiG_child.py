@@ -7,19 +7,15 @@ Created on Sat Feb  4 22:49:38 2017
 """
 
 #libraries
-print "importing plot items"
-import matplotlib
-matplotlib.use("qt4Agg")
+#import matplotlib
+#matplotlib.use("qt4Agg")
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 from matplotlib import style
 style.use("ggplot")
 
-print "importing GUI items"
 from PyQt4 import QtGui, QtCore
-
-print "importing other things"
 import os,sys, threading
 from subprocess import Popen as run
 from copy import deepcopy
@@ -32,11 +28,13 @@ import collections
 class GraphWidget(QtGui.QWidget):
     
     key = "Yes"
+    ncols = 2; nrows = 2
+    currAx = "ax"; plotArea = "par"; ax = "someAxis"
     scaleChange = "No" ; scaleChangeR = 0
     choice = "Beyond Viewgraph"; choiceR = 0
     INSET = 'None'
-    par = 'VROT'; parR  = 0
-    unitMeas = 'km/s'; unitMeasR = 0
+    par = ['VROT','SBR','INCL','PA']; parR  = 0
+    unitMeas = ['km/s','Jy km/s/sqarcs','degrees','degrees']; unitMeasR = 0
     tmpDeffile = os.getcwd() + "/tmpDeffile.def"
     fileName = None
     
@@ -50,7 +48,7 @@ class GraphWidget(QtGui.QWidget):
     historyKeys = [['VROT','km/s',1]]; historyKeysR = [[]]
     historyKeysDup = {'VROT':1}; historyKeysDupR = {}
     xScale=[0,0]; xScaleR=[0,0]
-    yScale=[0,0]; yScaleR=[0,0];
+    yScale={'VROT':[0,0]}; yScaleR=[0,0];
     redo = []
        
     
@@ -73,19 +71,28 @@ class GraphWidget(QtGui.QWidget):
         
         #Canvas and Toolbar
         self.figure = plt.figure() 
+        
+        
+        # self.scroll = QtGui.QScrollArea(self)
+        # grid.layout(self.scroll)
         self.canvas = FigureCanvas(self.figure)
-        self.toolbar = NavigationToolbar(self.canvas, self)
+#        self.toolbar = NavigationToolbar(self.canvas, self)
 #        self.canvas = FigureCanvas(self.f)
         self.canvas.setFocusPolicy( QtCore.Qt.ClickFocus )
         self.canvas.setFocus()
+        # self.scroll.setWidget(self.canvas)
+        
         
         self.canvas.mpl_connect('button_press_event', self.getClick)
         self.canvas.mpl_connect('button_release_event', self.getRelease)
         self.canvas.mpl_connect('motion_notify_event', self.getMotion)
         self.canvas.mpl_connect('key_press_event', self.keyPressed)
         
-        grid.addWidget(self.toolbar, 1,0,1,2)
+#        grid.addWidget(self.toolbar, 1,0,1,2)
+#        grid.addWidget(self.canvas, 2,0,1,2)
+        
         grid.addWidget(self.canvas, 2,0,1,2)
+#        grid.addWidget(self.scroll,1,1)
 
         #Import def and plot
         btn1 = QtGui.QPushButton('', self)
@@ -96,6 +103,14 @@ class GraphWidget(QtGui.QWidget):
         btn1.clicked.connect(self.openDef)
         grid.addWidget(btn1,0,0)
         
+        #Import 2nd .def file and plot
+#        btn2 = QtGui.QPushButton('', self)
+#        btn2.setFixedSize(50,30) 
+#        btn2.setFlat(True)
+#        btn2.setIcon(QtGui.QIcon('open_folder2.png'))
+#        btn2.setToolTip('Open Underlying .def file')
+#        btn2.clicked.connect(self.firstPlot) 
+#        grid.addWidget(btn2, 0,1)
             
     def center(self):
         """Centers the window
@@ -133,7 +148,8 @@ class GraphWidget(QtGui.QWidget):
             sys.exit(0)
         else:
             pass
-    
+
+
     def getData(self):
         """Loads data from specified .def file in open dialog box
         
@@ -180,7 +196,7 @@ class GraphWidget(QtGui.QWidget):
         except:
             try:
                 float(var)
-            	return 'float'
+                return 'float'
             except:
                 return 'str'
              
@@ -284,31 +300,32 @@ class GraphWidget(QtGui.QWidget):
             self.numPrecisionX = self.numPrecision(self.parVals['RADI'][:])
 
 #           ensure there are the same points for parameters as there are for RADI as specified in NUR parameter
+            for i in range(len(self.par)):
+
+                diff = self.NUR-len(self.parVals[self.par[i]])
+                lastItemIndex = len(self.parVals[self.par[i]])-1
+                if diff == self.NUR:
+                    for j in range(int(diff)):
+                        self.parVals[self.par[i]].append(0.0)
+                elif diff > 0 and diff < self.NUR:
+                    for j in range(int(diff)):
+                        self.parVals[self.par[i]].append(self.parVals[self.par[i]][lastItemIndex])
                 
-            diff = self.NUR-len(self.parVals[self.par])
-            lastItemIndex = len(self.parVals[self.par])-1
-            if diff == self.NUR:
-                for i in range(int(diff)):
-                    self.parVals[self.par].append(0.0)
-            elif diff > 0 and diff < self.NUR:
-                for i in range(int(diff)):
-                    self.parVals[self.par].append(self.parVals[self.par][lastItemIndex])
-            
             self.historyList.clear()
             for i in self.parVals:
                 self.historyList[i] = [self.parVals[i][:]]
             
-            #defining the x and y scale for plotting
+            #defining the x scale for plotting
 
             if (max(self.parVals['RADI'])-min(self.parVals['RADI']))<=100:
                 self.xScale = [int(ceil(-2*max(self.parVals['RADI']))),int(ceil(2*max(self.parVals['RADI'])))]                           
             else:
                 self.xScale = [int(ceil(min(self.parVals['RADI'])-0.1*(max(self.parVals['RADI'])-min(self.parVals['RADI'])))),int(ceil(max(self.parVals['RADI'])+0.1*(max(self.parVals['RADI'])-min(self.parVals['RADI']))))]                            
 
-            if (max(self.parVals['VROT'])-min(self.parVals['VROT']))<=100:
-                self.yScale = [int(ceil(-2*max(self.parVals['VROT']))),int(ceil(2*max(self.parVals['VROT'])))]
-            else:
-                self.yScale = [int(ceil(min(self.parVals['VROT'])-0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT'])))),int(ceil(max(self.parVals['VROT'])+0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT']))))]
+            # if (max(self.parVals['VROT'])-min(self.parVals['VROT']))<=100:
+            #     self.yScale = [int(ceil(-2*max(self.parVals['VROT']))),int(ceil(2*max(self.parVals['VROT'])))]
+            # else:
+            #     self.yScale = [int(ceil(min(self.parVals['VROT'])-0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT'])))),int(ceil(max(self.parVals['VROT'])+0.1*(max(self.parVals['VROT'])-min(self.parVals['VROT']))))]
             
             
             self.firstPlot()
@@ -327,8 +344,12 @@ class GraphWidget(QtGui.QWidget):
         """     
         #on left click in figure canvas, captures mouse press and assign None to 
         #mouse release
+        
+        # print self.currAx, event.inaxes
         if (event.button == 1) and not(event.xdata == None):
+            self.currAx = event.inaxes
             self.mPress[0]=round(float(event.xdata),self.numPrecisionX)
+            # print self.mPress[0], round(float(event.ydata),self.numPrecisionY)
 #            self.yVal = round(float(event.ydata),self.numPrecisionY)
             self.mRelease[0]=None
         
@@ -354,9 +375,9 @@ class GraphWidget(QtGui.QWidget):
         
         #append the new point to the history if the last item in history differs
         #from the new point
-        if not(self.historyList[self.par][len(self.historyList[self.par])-1]==self.parVals[self.par][:]):
-            self.historyList[self.par].append(self.parVals[self.par][:])
-            self.historyKeys[[i for i in range(len(self.historyKeys)-1,-1,-1) if self.historyKeys[i][0] == self.par][0]][2]+=1
+        if not(self.historyList[self.par[0]][len(self.historyList[self.par[0]])-1]==self.parVals[self.par[0]][:]):
+            self.historyList[self.par[0]].append(self.parVals[self.par[0]][:])
+            self.historyKeys[[i for i in range(len(self.historyKeys)-1,-1,-1) if self.historyKeys[i][0] == self.par[0]][0]][2]+=1
             
             self.scaleChangeR = 0; self.choiceR = 0; self.parR  = 0
             self.unitMeasR = 0; self.beforeR = 0; self.numPrecisionYR = 0; self.numPrecisionXR = 0
@@ -387,9 +408,8 @@ class GraphWidget(QtGui.QWidget):
         #movement and call re-draw graph
         if (event.button == 1) and not(event.ydata == None):
             self.mMotion[0]=round(float(event.ydata),self.numPrecisionY)
-            print "%.2f <= %.2f: " %(self.mMotion[0],1.15*self.yScale[0]),abs(self.mMotion[0]) <= 1.15*abs(self.yScale[0])
             self.plotFunc()
-  
+    
     def keyPressed(self,event):
         """Key is pressed
         
@@ -595,20 +615,65 @@ class GraphWidget(QtGui.QWidget):
         
         Produces view graph from historyList
         """
+        self.ax = [None] * (self.nrows * self.ncols)
+        counter = 0
+        for i in range(self.nrows):
+            for j in range(self.ncols):
+                self.ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j))
+                counter+=1
+        # if ((self.nrows + self.ncols) % 2 == 0):
+        #     for i in range(self.nrows):
+        #         for j in range(self.ncols):
+        #             ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j))
+        #             counter+=1
+        # else:
+        #     for i in range(self.rows):
+        #         for j in range(self.cols):
+        #             if (i == self.nrows -1) and (j == self.ncols-1):
+        #                 ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j), colspan=self.ncols)
+        #             else:
+        #                 ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j))
+        #             counter+=1
+
+        # # ax = self.figure.add_subplot(221)
+        # ax = plt.subplot2grid((2, 2), (0, 0))
+        # ax2 = plt.subplot2grid((2, 2), (0, 1))
+        # ax3 = plt.subplot2grid((2, 2), (1, 0), colspan=2)
+
+        for i in range(len(self.par)):
+            self.ax[i].clear()
+            self.ax[i].set_xlim(self.xScale[0],self.xScale[1])
+#            if (max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))<=100:
+#                self.yScale[self.par[i]] = [int(ceil(-2*max(self.parVals[self.par[i]]))),int(ceil(2*max(self.parVals[self.par[i]])))]
+#            else:
+#                self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))))]
+            if self.choice == "Beyond Viewgraph":
+                if (max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))<=100:
+                    self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))))]
+                else:
+                    self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))))]
+            elif self.choice == "Free":
+                if (max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))<=100:
+                    self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par[i]]))))]
+                else:
+                    self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))))]
+         
+                      
+            self.ax[i].set_ylim(self.yScale[self.par[i]][0],self.yScale[self.par[i]][1])
+       
         
 
-        ax = self.figure.add_subplot(111)
-        ax.clear()
-        ax.set_xlim(self.xScale[0],self.xScale[1])            
-        ax.set_ylim(self.yScale[0],self.yScale[1])
+            # for axes in self.figure.get_axes():
+            #     axes.set_xlabel("RADI (arcsec)")
+            #     axes.set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
+            self.ax[i].set_xlabel("RADI (arcsec)")
+            self.ax[i].set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
 
-        for axes in self.figure.get_axes():
-            axes.set_xlabel("RADI (arcsec)")
-            axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
-        ax.plot(self.parVals['RADI'], self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
-        ax.set_title('Plot')
-        ax.set_xticks(self.parVals['RADI'])
+            self.ax[i].plot(self.parVals['RADI'], self.historyList[self.par[i]][len(self.historyList[self.par[i]])-1],'--bo')
+            self.ax[i].set_title('Plot')
+            self.ax[i].set_xticks(self.parVals['RADI'])
 #        ax.set_yticks(np.arange(min(self.parVals[self.par]),max(self.parVals[self.par])+1,500))
+        plt.tight_layout()
         self.canvas.draw()
         self.key = "No"
         
@@ -625,66 +690,146 @@ class GraphWidget(QtGui.QWidget):
         
         Produces view graph from historyList or parVals
         """
+        for i in range(len(self.ax)):
+#            print self.ax[i], self.currAx
+#            print "ax[%d] == self.currAx: "%(i),self.ax[i].axes == self.currAx.axes
+            if self.ax[i] ==  self.currAx:
+                self.plotArea = self.par[i]
+                
+        i = self.par.index(self.plotArea)       
+#        ax = [None] * (self.nrows * self.ncols)
+#        counter = 0
+#        for i in range(self.nrows):
+#            for j in range(self.ncols):
+#                ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j))
+#                print ax[counter], self.currAx
+#                print "ax[%d] == self.currAx: "%(counter),ax[counter].axes == self.currAx.axes
+
+#                if ax[counter] == self.currAx:
+#                    self.plotArea = self.par[counter]
+#                counter+=1
+
+
         if self.scaleChange == "Yes":
-            ax = self.figure.add_subplot(111)
-            ax.clear()
-            ax.set_xlim(self.xScale[0],self.xScale[1])
-            ax.set_ylim(self.yScale[0],self.yScale[1])
-            for axes in self.figure.get_axes():
-                axes.set_xlabel("RADI (arcsec)")
-                axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
-            ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
-            ax.set_title('Plot')
-            #ax.set_xticks(self.parVals['RADI'])
-            self.canvas.draw() 
-            self.scaleChange = "No"
+            # ax = self.figure.add_subplot(111)
+            # if ((self.nrows + self.ncols) % 2 == 0):
+            #     for i in range(self.nrows):
+            #         for j in range(self.ncols):
+            #             ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j))
+            #             counter+=1
+            # else:
+            #     for i in range(self.rows):
+            #         for j in range(self.cols):
+            #             if (i == self.nrows -1) and (j == self.ncols-1):
+            #                 ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j), colspan=ncols)
+            #             else:
+            #                 ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j))
+            #             counter+=1
+            # ax = plt.subplot2grid((nrows, ncols), (0, 0))
+            # ax2 = plt.subplot2grid((nrows, ncols), (0, 1))
+            # ax3 = plt.subplot2grid((nrows, ncols), (1, 0), colspan=2)
+            # print ax
+            for i in range(len(self.par)):
+                self.ax[i].clear()
+                self.ax[i].set_xlim(self.xScale[0],self.xScale[1])
+                if (max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))<=100:
+                    self.yScale[self.par[i]] = [int(ceil(-2*max(self.parVals[self.par[i]]))),int(ceil(2*max(self.parVals[self.par[i]])))]
+                else:
+                    self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))))]
+                          
+                self.ax[i].set_ylim(self.yScale[self.par[i]][0],self.yScale[self.par[i]][1])
+           
+            
+
+                # for axes in self.figure.get_axes():
+                #     axes.set_xlabel("RADI (arcsec)")
+                #     axes.set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
+                self.ax[i].set_xlabel("RADI (arcsec)")
+                self.ax[i].set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
+
+                self.ax[i].plot(self.parVals['RADI'], self.historyList[self.par[i]][len(self.historyList[self.par[i]])-1],'--bo')
+#                self.ax[i].set_title('Plot')
+                self.ax[i].set_xticks(self.parVals['RADI'])
+
+
+            plt.tight_layout()
+            self.canvas.draw()
+            self.key = "No"
         
+
         if self.key=="Yes":
             self.firstPlot()
             
-        #this re-plots the graph as long as the mouse is in motion and the right
-        #data point is clicked
+        #this re-plots the graph as long as the mouse is in motion and the right data point is clicked
         else:
             for j in range(len(self.parVals['RADI'])):
                 if (self.mPress[0] < (self.parVals['RADI'][j])+3) and (self.mPress[0] > (self.parVals['RADI'][j])-3) and (self.mRelease[0]==None):
-                    self.parVals[self.par][j] = self.mMotion[0]
+                    
+#                    print "before: ", self.parVals[self.plotArea][j]
+                    self.parVals[self.plotArea][j] = self.mMotion[0]
+#                    print "after: ",self.parVals[self.plotArea][j]
 
-                    ax = self.figure.add_subplot(111)
-                    ax.clear()
-                    ax.set_xlim(self.xScale[0],self.xScale[1])            
-#                    
+                    # if ((self.nrows + self.ncols) % 2 == 0):
+                    #     for i in range(self.nrows):
+                    #         for j in range(self.ncols):
+                    #             ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j))
+                    #             counter+=1
+                    # else:
+                    #     for i in range(self.rows):
+                    #         for j in range(self.cols):
+                    #             if (i == self.nrows -1) and (j == self.ncols-1):
+                    #                 ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j), colspan=self.ncols)
+                    #             else:
+                    #                 ax[counter] = plt.subplot2grid((self.nrows, self.ncols), (i, j))
+                    #             counter+=1
+                    # ax = self.figure.add_subplot(111)
+                    # ax = plt.subplot2grid((2, 2), (0, 0))
+                    # ax2 = plt.subplot2grid((2, 2), (0, 1))
+                    # ax3 = plt.subplot2grid((2, 2), (1, 0), colspan=2) 
+        #            for i in range(len(self.par)):
+                    self.ax[i].clear()
+                    self.ax[i].set_xlim(self.xScale[0],self.xScale[1])
+        
                     if self.choice == "Beyond Viewgraph":
-                        
-                        if self.mMotion[0] >= 0.85*self.yScale[1]:
-                        	self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
-                    		
-#                        	self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
-#                            self.yScale[1] += (self.yScale[1]*0.5) if self.yScale[1]>0 else (self.yScale[1]*-0.5)
-#                            self.yScale[0] -= (self.yScale[0]*0.5) if self.yScale[0]>0 else (self.yScale[0]*-0.5)
-                        elif abs(self.mMotion[0]) <= abs(1.15*self.yScale[0]):
-                        	self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
-                    		
-#                            self.yScale[0] -= (self.yScale[0]*0.5) if self.yScale[0]>0 else (self.yScale[0]*-0.5)
-#                            self.yScale[1] += (self.yScale[1]*0.5) if self.yScale[1]>0 else (self.yScale[1]*-0.5)
+        
+                        if self.mMotion[0] >= 0.85*self.yScale[self.par[i]][1]:
+                            
+                            self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))))]
+        
+                        elif abs(self.mMotion[0]) <= abs(1.15*self.yScale[self.par[i]][0]):
+                            self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))))]
+                            
+        #                            self.yScale[0] -= (self.yScale[0]*0.5) if self.yScale[0]>0 else (self.yScale[0]*-0.5)
+        #                            self.yScale[1] += (self.yScale[1]*0.5) if self.yScale[1]>0 else (self.yScale[1]*-0.5)
                         
                     elif self.choice == "Free":
-                        if (max(self.parVals[self.par])-min(self.parVals[self.par]))<=100:
-                        	self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
-                    		
-#                            self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
+                        if (max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))<=100:
+                            self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))))]
+                            
+        #                            self.yScale = [int(ceil(-2*max(self.parVals[self.par]))),int(ceil(2*max(self.parVals[self.par])))]
                         else:
-                            self.yScale = [int(ceil(min(self.parVals[self.par])-0.1*(max(self.parVals[self.par])-min(self.parVals[self.par])))),int(ceil(max(self.parVals[self.par])+0.1*(max(self.parVals[self.par])-min(self.parVals[self.par]))))]
+                            self.yScale[self.par[i]] = [int(ceil(min(self.parVals[self.par[i]])-0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]])))),int(ceil(max(self.parVals[self.par[i]])+0.1*(max(self.parVals[self.par[i]])-min(self.parVals[self.par[i]]))))]
                     
-
-                    ax.set_ylim(self.yScale[0],self.yScale[1])
-                    for axes in self.figure.get_axes():
-                        axes.set_xlabel("RADI (arcsec)")
-                        axes.set_ylabel(self.par + "( "+self.unitMeas+ " )")
-                    ax.plot(self.parVals['RADI'], self.parVals[self.par],'--bo')
-                    ax.set_title('Plot')
-                  #  ax.set_xticks(self.parVals['RADI'])
-#                    ax.set_yticks(np.arange(min(self.parVals[self.par]),max(self.parVals[self.par])+1,200))
-                    self.canvas.draw()                
+                    print self.yScale[self.par[i]]
+                    
+                    self.ax[i].set_ylim(self.yScale[self.par[i]][0],self.yScale[self.par[i]][1])
+                    
+                
+        
+                    # for axes in self.figure.get_axes():
+                    #     axes.set_xlabel("RADI (arcsec)")
+                    #     axes.set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
+                    self.ax[i].set_xlabel("RADI (arcsec)")
+                    self.ax[i].set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
+        
+                    self.ax[i].plot(self.parVals['RADI'], self.historyList[self.par[i]][len(self.historyList[self.par[i]])-1],'--bo')
+        #            self.ax[i].set_title('Plot')
+                    self.ax[i].set_xticks(self.parVals['RADI'])
+        
+        
+                    plt.tight_layout()
+                    self.canvas.draw()
+                    self.key = "No"              
 
     
     def saveFile(self,newVals,sKey):  
@@ -964,8 +1109,8 @@ class GraphWidget(QtGui.QWidget):
             pass
         
         t = threading.Timer(1.0, self.animate)
-    	t.daemon = True
-    	t.start()
+        t.daemon = True
+        t.start()
         
         
     def openEditor(self):
@@ -986,6 +1131,23 @@ class GraphWidget(QtGui.QWidget):
 #            assign current modified time of temporary def file to before    
             self.before = os.stat(self.tmpDeffile).st_mtime
 
+    def setRowCol(self):
+         text,ok = QtGui.QInputDialog.getText(self,'Window number Input Dialog', 
+                                            'Specify the number of rows and columns (5,5):')
+
+         if ok:
+            print "ok was clicked"
+            if len(text) > 0:
+
+                text = str(text)
+                text = text.split(",")
+
+                self.nrows = int(text[0])
+                self.ncols = int(text[1])
+                self.firstPlot()
+
+
+    
 
 class SMWindow(QtGui.QWidget):
 
@@ -1094,8 +1256,8 @@ class mainWindow(QtGui.QMainWindow):
         
         self.gw = GraphWidget()
         self.setCentralWidget(self.gw)
- 
-        self.sm = SMWindow(self.gw.xScale[0],self.gw.xScale[1],self.gw.yScale[0],self.gw.yScale[1],self.gw.par)
+
+        self.sm = SMWindow(self.gw.xScale[0],self.gw.xScale[1],self.gw.yScale[self.gw.par[0]][0],self.gw.yScale[self.gw.par[0]][1],self.gw.par[0])
         self.ps = ParamSpec()
         self.setMinimumSize(1280, 720)
 #        self.setGeometry(600, 300, 1000, 600)
@@ -1133,7 +1295,11 @@ class mainWindow(QtGui.QMainWindow):
         self.startTF = QtGui.QAction("&Start TiriFiC",self)
         self.startTF.setStatusTip('Starts TiRiFiC from terminal')
         self.startTF.triggered.connect(self.gw.startTiriFiC)
-        
+
+        self.winSpec = QtGui.QAction("&Window Specification",self)
+        self.winSpec.setStatusTip('Determines the number of rows and columns in a plot')
+        self.winSpec.triggered.connect(self.gw.setRowCol)
+
         self.scaleMan = QtGui.QAction("&Scale Manager",self)
         self.scaleMan.setStatusTip('Manages behaviour of scale and min and max values')
         self.scaleMan.triggered.connect(self.reloadSM)
@@ -1167,6 +1333,7 @@ class mainWindow(QtGui.QMainWindow):
         self.prefMenu = mainMenu.addMenu('&Preferences')
         self.prefMenu.addAction(self.scaleMan)
         self.prefMenu.addAction(self.paraDef)
+        self.prefMenu.addAction(self.winSpec)
         
     def reloadSM(self):
         self.sm = SMWindow(self.gw.xScale[0],self.gw.xScale[1],self.gw.yScale[0],self.gw.yScale[1],self.gw.par)
@@ -1226,7 +1393,7 @@ class mainWindow(QtGui.QMainWindow):
                
                
            #if the parameter specified is not in parVals, then obviously it isnt in historyList
-           #therefore there's no need for another "if statement" here
+           #therefore there's no need for another if statement here
            #evaluate the statements in the if-else condition above
            if self.gw.par in self.gw.historyList:
                if (len(self.gw.historyList[self.gw.par])<1) or ((len(self.gw.historyList[self.gw.par])>0) and not(self.gw.historyList[self.gw.par][-1]==self.gw.parVals[self.gw.par][:])):
@@ -1252,19 +1419,19 @@ class mainWindow(QtGui.QMainWindow):
            self.ps.close()
 
 def main():
-	if os.path.isfile(os.getcwd() + "/tmpDeffile.def"):
-		os.remove(os.getcwd() + "/tmpDeffile.def")
+    if os.path.isfile(os.getcwd() + "/tmpDeffile.def"):
+        os.remove(os.getcwd() + "/tmpDeffile.def")
 
-	app = QtGui.QApplication(sys.argv)
-	GUI = mainWindow()
-	GUI.show()
+    app = QtGui.QApplication(sys.argv)
+    GUI = mainWindow()
+    GUI.show()
 
-	try:
-		GUI.gw.animate()
-	except SystemExit:
-		print "Done"
+    try:
+        GUI.gw.animate()
+    except SystemExit:
+        print "Done"
 
-	app.exec_()
+    app.exec_()
 
 
 if __name__ == '__main__':
