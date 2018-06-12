@@ -2,9 +2,7 @@
 TiRiFiG
 ============
 
-|Doc Status|
 |PyPI Version|
-|Python Versions|
 
 TiRiFiC is a 3D kinematic modelling tool used to model resolved spectroscopic
 observations of rotating discs in terms of the tilted-ring model with varying complexity.
