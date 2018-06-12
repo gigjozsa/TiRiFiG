@@ -4,7 +4,7 @@
 # Author: Samuel (samueltwum1@gmail.com) with MSc supervisors                           #
 # Copyright 2018 Samuel N. Twum                                                         #
 #                                                                                       #
-# MIT License - see LICENSE.txt for details                                             #
+# GPL license - see LICENSE.txt for details                                             #
 #########################################################################################
 
 """This script here is the GUI (PyQt4) implementation of TiRiFiG which allows users of 
@@ -250,9 +250,8 @@ classes:
 """
 
 #libraries
-import os,sys, threading
+import os, sys, threading, time
 from subprocess import Popen as run
-from functools import partial
 from math import ceil
 from decimal import Decimal 
 import numpy as np
@@ -265,9 +264,10 @@ style.use("ggplot")
 from PyQt4 import QtGui, QtCore
 
 currPar = None
-fit_par = {'SBR':'Jy km s-1 arcsec-2','RADI':'arcsec','VROT':'km/s','Z0':'arcsec',
-           'SDIS':'km/s','INCL':'degrees','PA':'degrees','XPOS':'degrees',
-           'YPOS':'degrees','VSYS':'km/s'}
+fit_par = {'SBR':'Jy km s-1 arcsec-2','RADI':'arcsec','VROT':'km s-1','Z0':'arcsec',
+           'SDIS':'km s-1','INCL':'degrees','PA':'degrees','XPOS':'degrees',
+           'YPOS':'degrees','VSYS':'km s-1', 'DVRO':'km s-1 arcsec-1', 
+           'DVRA':'km s-1 arcsec-1', 'VRAD': 'km s-1' }
 
 def _center(self):
     """Centers the window
@@ -353,14 +353,14 @@ class GraphWidget(QtGui.QWidget):
         self.btnAddParam = QtGui.QPushButton('', self)
         self.btnAddParam.setFixedSize(50, 30)
         self.btnAddParam.setFlat(True)
-        self.btnAddParam.setIcon(QtGui.QIcon('plus.png'))
+        self.btnAddParam.setIcon(QtGui.QIcon('utilities/icons/plus.png'))
         self.btnAddParam.setToolTip('Add Parameter')
 
         # modify plotted parameter
         self.btnEditParam = QtGui.QPushButton('', self)
         self.btnEditParam.setFixedSize(50, 30) 
         self.btnEditParam.setFlat(True)
-        self.btnEditParam.setIcon(QtGui.QIcon('edit.png'))
+        self.btnEditParam.setIcon(QtGui.QIcon('utilities/icons/edit.png'))
         self.btnEditParam.setToolTip('Modify plotted parameter')
         
         hbox = QtGui.QHBoxLayout()
@@ -1651,26 +1651,27 @@ class MainWindow(QtGui.QMainWindow):
                                             self.gwObjects[parIndex+1].changeGlobal)
                 self.gwObjects[parIndex+1].btnEditParam.clicked.connect(
                                             self.editParaObj)
-                self.nrows += 1
             else:
-                if fit_par[self.par[parIndex + 1]] == "":
+                if self.par[parIndex + 1] not in fit_par.keys():
                     fit_par[self.par[parIndex + 1]] = unitMeas
                     for i in self.gwObjects:
                         if i.par == self.par[parIndex + 1]:
                             i.unitMeas = unitMeas
                             break
-
+            self.nrows += 1
             for i in reversed(range(self.gridLayoutScroll.count())):
                 self.gridLayoutScroll.itemAt(i).widget().setParent(None)
                 
             counter = 0
             for i in range(self.nrows):
                 for j in range(self.ncols):
-                    for k in range(counter, len(self.gwObjects)):
-                        if self.gwObjects[k].par in self.par:
-                            self.gridLayoutScroll.addWidget(self.gwObjects[k], i , j)
-                            counter = k+1
-                            break
+                    for k in range(counter, len(self.par)):
+                        for x in range(len(self.gwObjects)):
+                            if self.gwObjects[x].par == self.par[k]:
+                                self.gridLayoutScroll.addWidget(self.gwObjects[x], i , j)
+                                counter = k + 1
+                                break
+                        break
                     
             self.ps.close()
         
@@ -1714,7 +1715,7 @@ class MainWindow(QtGui.QMainWindow):
             else:
                 self.par[parIndex] = str.upper(str(self.ps.parameter.currentText()))
                 unitMeas = str(self.ps.unitMeasurement.text())
-                if fit_par[self.par[parIndex]] == "":
+                if self.par[parIndex] not in fit_par.keys():
                     fit_par[self.par[parIndex]] = unitMeas
                     for i in self.gwObjects:
                         if i.par == self.par[parIndex]:
@@ -1727,12 +1728,14 @@ class MainWindow(QtGui.QMainWindow):
                 counter = 0
                 for i in range(self.nrows):
                     for j in range(self.ncols):
-                        for k in range(counter, len(self.gwObjects)):
-                            if self.gwObjects[k].par in self.par:
-                                self.gridLayoutScroll.addWidget(self.gwObjects[k],
-                                                        i, j)
-                                counter = k + 1
-                                break
+                        for k in range(counter, len(self.par)):
+                            for x in range(len(self.gwObjects)):
+                                if self.gwObjects[x].par == self.par[k]:
+                                    self.gridLayoutScroll.addWidget(self.gwObjects[x], i , j)
+                                    counter = k + 1
+                                    break
+                            break
+
                 self.ps.close()
 
     def tirificMessage(self):
@@ -1758,10 +1761,11 @@ class MainWindow(QtGui.QMainWindow):
         progress.setMaximum(self.loops*1e6)
         progress.resize(500,100)
         prev = 1
-        message = ""
+        message = "Stopped"
         completed = int(prev * 1e6) / 2
         status = 'running'
         progress.show()
+        time.sleep(10)
         while cmd.poll() is None and status == 'running':
             with open(self.progressPath,'r') as f:
                 data = f.readlines()
@@ -1850,8 +1854,6 @@ class MainWindow(QtGui.QMainWindow):
             self.tirificMessage()
            
 def main():
-    # this wont be necessary if the tempfile module is used
-    # otherwise resort to using Josh's code shared
     if os.path.isfile(os.getcwd() + "/tmpDeffile.def"):
         os.remove(os.getcwd() + "/tmpDeffile.def")
 
