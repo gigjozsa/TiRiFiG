@@ -1850,6 +1850,8 @@ class MainWindow(QtGui.QMainWindow):
             self.tirificMessage()
            
 def main():
+    # this wont be necessary if the tempfile module is used
+    # otherwise resort to using Josh's code shared
     if os.path.isfile(os.getcwd() + "/tmpDeffile.def"):
         os.remove(os.getcwd() + "/tmpDeffile.def")
 
