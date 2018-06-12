@@ -1,6 +1,6 @@
-======================================
-TiRiFiG: A graphical 3D modelling tool
-======================================
+================================================
+TiRiFiG: A graphical 3D kinematic modelling tool
+================================================
 
 |PyPI Version|
 
@@ -8,8 +8,7 @@ TiRiFiG: A graphical 3D modelling tool
 TiRiFiC_ is a 3D kinematic modelling tool used to model resolved spectroscopic
 observations of rotating discs in terms of the tilted-ring model with varying complexity.
 The front-end (TiRiFiG, Tilted-Ring-Fitting-GUI), part of the toolkit, is an aid to
-enable the user to perform the modelling process interactively. We present the current
-implementation.
+enable the user to perform the modelling process interactively.
 
 .. |PyPI Version| image:: https://pypi.org/static/images/logo-small.6eef541e.svg
                   :target: https://pypi.python.org/pypi/TiRiFiG
