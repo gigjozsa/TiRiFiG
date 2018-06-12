@@ -19,12 +19,9 @@ enable the user to perform the modelling process interactively.
 .. _license: https://github.com/gigjozsa/TiRiFiG/blob/master/LICENSE
 .. _TiRiFiC: http://gigjozsa.github.io/tirific/
 
-===========
-Basic Usage
-===========
-
+============
 Installation
-------------
+============
 
 Installation from source_, working directory where source is checked out
 
