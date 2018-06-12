@@ -16,6 +16,8 @@ implementation.
                   :alt:
 
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/
+.. _source: https://github.com/gigjozsa/samtirifik
+.. _license: https://github.com/gigjozsa/samtirifik/blob/master/LICENSE
 
 ===========
 Basic Usage
@@ -34,10 +36,16 @@ This package is available on *PYPI*, allowing
 
 .. code-block:: bash
   
-    $ pip install tango-simlib
+    $ pip install samtirifik
+
+=======
+License
+=======
+
+This project is licensed under the MIT License - see license_ for details.
 
 ==========
 Contribute
 ==========
 
-Contributions are always welcome! Please ensure that you adhere to _PEP8 coding style guide.
+Contributions are always welcome! Please ensure that you adhere to PEP8_ coding style guide.
