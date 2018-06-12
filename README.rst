@@ -18,7 +18,7 @@ implementation.
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/
 .. _source: https://github.com/gigjozsa/TiRiFiG
 .. _license: https://github.com/gigjozsa/TiRiFiG/blob/master/LICENSE
-.. _TiRiFiC: https://github.com/gigjozsa/TiRiFiG/blob/master/LICENSE
+.. _TiRiFiC: http://gigjozsa.github.io/tirific/
 
 ===========
 Basic Usage
