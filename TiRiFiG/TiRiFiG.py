@@ -790,7 +790,7 @@ class SMWindow(QtGui.QWidget):
 
 class ParamSpec(QtGui.QWidget):
     
-    def __init__(self, par):
+    def __init__(self, par, windowTitle):
         super(ParamSpec, self).__init__()
         self.par = par
         
@@ -829,7 +829,7 @@ class ParamSpec(QtGui.QWidget):
         self.grid.addLayout(self.hbox,3,1)
         self.setLayout(self.grid)
        
-        self.setWindowTitle("Add Parameter")
+        self.setWindowTitle(windowTitle)
         self.setGeometry(300, 300, 300, 150)
 
         _center(self)
@@ -1684,7 +1684,7 @@ class MainWindow(QtGui.QMainWindow):
             else:
                 val.append(i)
                 
-        self.ps = ParamSpec(val)
+        self.ps = ParamSpec(val, "Add Parameter")
         self.ps.show()
         self.ps.btnOK.clicked.connect(self.paramDef)
         self.ps.btnCancel.clicked.connect(self.ps.close)
@@ -1697,7 +1697,7 @@ class MainWindow(QtGui.QMainWindow):
             else:
                 val.append(i)
                 
-        self.ps = ParamSpec(val)
+        self.ps = ParamSpec(val, "Edit Parameter")
         self.ps.show()
         self.ps.btnOK.clicked.connect(self.editParamDef)
         self.ps.btnCancel.clicked.connect(self.ps.close)
