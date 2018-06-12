@@ -13,9 +13,3 @@ implementation_.
 .. |PyPI Version| image:: https://pypi.org/static/images/logo-large.72ad8bf1.svg
                   :target: https://pypi.python.org/pypi/samtirifik
                   :alt:
-
-```
-### Contributors
-
-* Gyula (Josh) Jozsa ([@gigjozsa](https://github.com/gigjozsa))
-* Peter Kamphuis ([@p-kamphuis](https://github.com/PeterKamphuis/FAT))
