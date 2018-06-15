@@ -20,9 +20,9 @@ setup(name="TiRiFiG",
           "Topic :: Scientific/Engineering :: Visualization",
       ],
       platforms=["OS Independent"],
-      install_requires=[
-          "PyQt>=4",
-          "numpy"],
+      # install_requires=[
+          # "PyQt>=4",
+         # "numpy"],
       zip_safe=False,
       include_package_data=True,
       package_data={'TiRiFiG': ['utilities/example/n5204_lo.n5204_lo.fits',
