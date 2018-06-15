@@ -17,7 +17,7 @@ setup(name="TiRiFiG",
           "License :: OSI Approved :: MIT License",
           "Operating System :: OS Independent",
           "Programming Language :: Python :: 2",
-          "Topic :: Scientific/Engineering :: Visualisation",
+          "Topic :: Scientific/Engineering :: Visualization",
       ],
       platforms=["OS Independent"],
       install_requires=[
