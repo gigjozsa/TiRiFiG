@@ -35,7 +35,7 @@ NUR= 11
 # Position angle for all rings (first guess), degrees, disk 1
     PA= 40.0 40.0 40.0 40.0 40.0 40.0 40.0 40.0 40.0 40.0 40.0
 # Central position, right ascension, for all rings (first guess), degrees, disk 1
-    XPOS= 91.875
+    XPOS= 91.875 92
 # Central position, declination, for all rings (first guess), degrees, disk 1
     YPOS= -61.80722
 # Systemic velocity for all rings (first guess), km/s, disk 1
