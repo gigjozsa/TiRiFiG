@@ -21,7 +21,7 @@ setup(name="TiRiFiG",
       ],
       platforms=["OS Independent"],
       install_requires=[
-          "PyQt>=4.8.7, <5",
+          "PyQt>=4",
           "numpy"],
       zip_safe=False,
       include_package_data=True,
