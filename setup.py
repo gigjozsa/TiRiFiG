@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from setuptools import setup, find_packages
-with open("README.md", "r") as fh:
+with open("README.rst", "r") as fh:
     long_description = fh.read()
 setup(name="TiRiFiG",
       description="A graphical user interface that allows user to TiRiFiC to modify tilted-ring parameters interactively.",
