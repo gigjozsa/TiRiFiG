@@ -10,8 +10,8 @@ observations of rotating discs in terms of the tilted-ring model with varying co
 The front-end (TiRiFiG, Tilted-Ring-Fitting-GUI), part of the toolkit, is an aid to
 enable the user to perform the modelling process interactively.
 
-.. |PyPI Version| image:: https://badge.fury.io/py/TiRiFiG.svg
-                  :target: https://badge.fury.io/py/TiRiFiG
+.. |PyPI Version| image:: https://img.shields.io/badge/pypi-beta-orange.svg
+                  :target: https://pypi.org/project/TiRiFiG/
                   :alt:
 
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/

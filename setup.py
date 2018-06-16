@@ -6,7 +6,7 @@ def readme():
         return f.read()
 
 setup(name="TiRiFiG",
-	  version="0.0.3",
+	  version="0.0.4",
       description="A graphical user interface that allows users of TiRiFiC to modify tilted-ring parameters interactively.",
       long_description=readme(),
       author="Samuel Twum",
