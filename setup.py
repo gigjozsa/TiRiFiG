@@ -4,10 +4,11 @@ from setuptools import setup, find_packages
 with open("README.rst", "r") as fh:
     long_description = fh.read()
 setup(name="TiRiFiG",
-      description="A graphical user interface that allows user to TiRiFiC to modify tilted-ring parameters interactively.",
+	  version="0.0.1",
+      description="A graphical user interface that allows users of TiRiFiC to modify tilted-ring parameters interactively.",
 	  long_description=long_description,
       long_description_content_type="text/markdown",
-      author="Samuel Twum with MSc Supervisors",
+      author="Samuel Twum",
       author_email="samueltwum1@gmail.com",
       packages=find_packages(),
       url='https://github.com/gigjozsa/samtirifik',
