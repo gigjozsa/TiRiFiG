@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 with open("README.rst", "r") as fh:
     long_description = fh.read()
 setup(name="TiRiFiG",
-	  version="0.0.2",
+	  version="0.0.3",
       description="A graphical user interface that allows users of TiRiFiC to modify tilted-ring parameters interactively.",
 	  long_description=long_description,
       long_description_content_type="text/reStructuredText",
