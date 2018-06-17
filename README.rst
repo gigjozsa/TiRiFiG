@@ -20,6 +20,17 @@ enable the user to perform the modelling process interactively.
 .. _TiRiFiC: http://gigjozsa.github.io/tirific/
 
 ============
+Requirements
+============
+
+The code requires full installation of:
+
+.. code-block:: bash
+  
+    PyQt4
+    TiRiFiC
+
+============
 Installation
 ============
 
