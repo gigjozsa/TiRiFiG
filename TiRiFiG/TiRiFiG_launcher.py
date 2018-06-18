@@ -347,17 +347,19 @@ class GraphWidget(QtGui.QWidget):
         self.ax = self.figure.add_subplot(111)
 
         #change the parameter in the viewgraph
-        self.btnAddParam = QtGui.QPushButton('', self)
+        self.btnAddParam = QtGui.QPushButton('Add Paramter', self)
         self.btnAddParam.setFixedSize(50, 30)
         self.btnAddParam.setFlat(True)
-        self.btnAddParam.setIcon(QtGui.QIcon('utilities/icons/plus.png'))
+        # FIX ME: use icon instead of text
+        # self.btnAddParam.setIcon(QtGui.QIcon('utilities/icons/plus.png'))
         self.btnAddParam.setToolTip('Add Parameter')
 
         # modify plotted parameter
-        self.btnEditParam = QtGui.QPushButton('', self)
+        self.btnEditParam = QtGui.QPushButton('&Change Paramter', self)
         self.btnEditParam.setFixedSize(50, 30)
         self.btnEditParam.setFlat(True)
-        self.btnEditParam.setIcon(QtGui.QIcon('utilities/icons/edit.png'))
+        # FIX ME: use icon instead if text
+        # self.btnEditParam.setIcon(QtGui.QIcon('utilities/icons/edit.png'))
         self.btnEditParam.setToolTip('Modify plotted parameter')
 
         hbox = QtGui.QHBoxLayout()
