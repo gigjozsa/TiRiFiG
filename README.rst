@@ -18,6 +18,7 @@ enable the user to perform the modelling process interactively.
 .. _source: https://github.com/gigjozsa/TiRiFiG
 .. _license: https://github.com/gigjozsa/TiRiFiG/blob/master/LICENSE
 .. _TiRiFiC: http://gigjozsa.github.io/tirific/
+.. _website: https://www.riverbankcomputing.com/software/pyqt/download
 
 ============
 Requirements
@@ -47,16 +48,10 @@ This package is available on *PYPI*, allowing
     $ pip install TiRiFiG
 
 TiRiFiG depends on PyQt4 and TiRiFiC_ to run. To install PyQt4, I suggest installing Anaconda first and then installing PyQt4 using 
-
-.. code-block:: bash
-  
-    $ conda install pyqt=4
+``conda install pyqt=4``. Alternatively, you can install it by following the instruction on the Riverbank Computing website_.
 
 Download and installation notes for TiRiFiC_ is on its website. Once installed, add TiRiFiG to your PYTHONPATH using 
-
-.. code-block:: bash
-  
-    $ export PATH='path_to_installation_directory:$PATH'.
+``export PATH='path_to_installation_directory:$PATH'``.
 
 =====
 Usage
@@ -65,9 +60,9 @@ Usage
 Start TiRiFiG, from the terminal.
 
 With the GUI running, the next steps are:
-#. Click 'Open' and select a .def file to load and visualise.
-#. Adjust data points for the parameter(s) using the mouse.
-#. Start TiRiFiC from run menu to perform fitting.
+- Click 'Open' and select a .def file to load and visualise.
+- Adjust data points for the parameter(s) using the mouse.
+- Start TiRiFiC from run menu to perform fitting.
 
 =======
 License
