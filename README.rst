@@ -60,8 +60,11 @@ Usage
 Start TiRiFiG, from the terminal.
 
 With the GUI running, the next steps are:
+
 - Click 'Open' and select a .def file to load and visualise.
+
 - Adjust data points for the parameter(s) using the mouse.
+
 - Start TiRiFiC from run menu to perform fitting.
 
 =======
