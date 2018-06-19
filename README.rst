@@ -48,7 +48,7 @@ This package is available on *PYPI*, allowing
     $ pip install TiRiFiG
 
 TiRiFiG depends on PyQt4 and TiRiFiC_ to run. To install PyQt4, I suggest installing Anaconda first and then installing PyQt4 using 
-``conda install pyqt=4``. Alternatively, you can install it by following the instruction on the Riverbank Computing website_.
+``conda install pyqt=4``. Alternatively, you can install it by following the instructions on the Riverbank Computing website_.
 
 Download and installation notes for TiRiFiC_ is on its website. Once installed, add TiRiFiG to your PYTHONPATH using 
 ``export PATH='path_to_installation_directory:$PATH'``.
