@@ -1,4 +1,4 @@
-This is the website for the 2016 NASSP masters Fundamentals of Radio Interferometry course. The course is based on the [ipython-based book](https://github.com/griffinfoster/fundamentals_of_interferometry) of the same name. This site will be updated regularly.
+This is the website for the 201x NASSP masters Fundamentals of Radio Interferometry course. The course is based on the [ipython-based book](https://github.com/griffinfoster/fundamentals_of_interferometry) of the same name. This site will be updated regularly.
 
 ## Course Schedule
 
