@@ -6,7 +6,7 @@ def readme():
         return f.read()
 
 setup(name="TiRiFiG",
-	  version="1.0.0",
+	  version="1.0.1",
       description="A graphical user interface that allows users of TiRiFiC to modify tilted-ring parameters interactively.",
       long_description=readme(),
       author="Samuel Twum",
@@ -25,9 +25,10 @@ setup(name="TiRiFiG",
           "Topic :: Scientific/Engineering :: Visualization",
       ],
       platforms=["OS Independent"],
-      # install_requires=[
+      install_requires=[
           # "PyQt>=4",
-         # "numpy"],
+         "numpy",
+         "matplotlib"],
       zip_safe=False,
       include_package_data=True,
       package_data={'TiRiFiG': ['utilities/example/n5204_lo.n5204_lo.fits',
