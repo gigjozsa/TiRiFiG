@@ -356,7 +356,7 @@ class GraphWidget(QtGui.QWidget):
 
         # modify plotted parameter
         self.btnEditParam = QtGui.QPushButton('&Change', self)
-        self.btnEditParam.setFixedSize(50, 40)
+        self.btnEditParam.setFixedSize(50, 50)
         self.btnEditParam.setFlat(True)
         # FIX ME: use icon instead if text
         # self.btnEditParam.setIcon(QtGui.QIcon('utilities/icons/edit.png'))
