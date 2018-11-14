@@ -356,7 +356,7 @@ class GraphWidget(QtGui.QWidget):
 
         # modify plotted parameter
         self.btnEditParam = QtGui.QPushButton('&Change', self)
-        self.btnEditParam.setFixedSize(50, 30)
+        self.btnEditParam.setFixedSize(50, 40)
         self.btnEditParam.setFlat(True)
         # FIX ME: use icon instead if text
         # self.btnEditParam.setIcon(QtGui.QIcon('utilities/icons/edit.png'))
@@ -1183,7 +1183,7 @@ class MainWindow(QtGui.QMainWindow):
                 # FIXME reloading another file on already opened not properly working
                 # user has to close open window and reopen file for such a case
                 QtGui.QMessageBox.information(self, "Information",
-                                              "Close app and reopen to load file. Bug"
+                                              "Close app and reopen to load file. Bug "
                                               "being fixed")
                 # self.cleanUp()
                 # FIXME (Samuel 11-06-2018): Find a better way to do this
@@ -1453,6 +1453,7 @@ class MainWindow(QtGui.QMainWindow):
                     f.write(i)
 
                 self.data = tmpFile[:]
+                self.fileName = fileName
 
     def saveAsMessage(self):
         """Displays the information about save action
