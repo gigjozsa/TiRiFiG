@@ -444,6 +444,13 @@ class GraphWidget(QtGui.QWidget):
                             self.canvas.draw()
                             self.key = "No"
                             break
+                    # append the new point to the history if the last item in history differs
+                    # from the new point
+                    if not self.historyList[len(self.historyList)-1] == self.parVals[:]:
+                        self.historyList.append(self.parVals[:])
+
+                    self.mPress[0] = None
+                    self.mPress[1] = None
 
 
 
@@ -1039,8 +1046,12 @@ class MainWindow(QtGui.QMainWindow):
             with open(self.fileName) as f:
                 data = f.readlines()
         except:
-            QtGui.QMessageBox.information(self, "Information",
+            if self.fileName == ''
+                pass
+            else:
+                QtGui.QMessageBox.information(self, "Information",
                                           "Empty/Invalid file specified")
+            return None
         else:
             return data
 
@@ -1175,7 +1186,10 @@ class MainWindow(QtGui.QMainWindow):
         try:
             self.getParameter(data)
         except:
-            QtGui.QMessageBox.information(self, "Information",
+            if data is None:
+                pass
+            else:
+                QtGui.QMessageBox.information(self, "Information",
                                           "Tilted-ring parameters not retrieved")
         else:
             self.data = data
