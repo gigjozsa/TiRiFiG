@@ -261,7 +261,7 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 from matplotlib import style
 style.use("ggplot")
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtCore, QtWidgets
 
 currPar = None
 fit_par = {'SBR':'Jy km s-1 arcsec-2', 'RADI':'arcsec', 'VROT':'km s-1', 'Z0':'arcsec',
@@ -283,7 +283,7 @@ def _center(self):
     and the center point is figured out for which the window is placed.
     """
     qr = self.frameGeometry()
-    cp = QtGui.QDesktopWidget().availableGeometry().center()
+    cp = QtWidgets.QDesktopWidget().availableGeometry().center()
     qr.moveCenter(cp)
     self.move(qr.topLeft())
 
@@ -304,7 +304,7 @@ class TimerThread():
     def cancel(self):
         self.thread.cancel()
 
-class GraphWidget(QtGui.QWidget):
+class GraphWidget(QtWidgets.QWidget):
     scaleChange = "No"
     redo = []
     mPress = [None, None]
@@ -328,7 +328,7 @@ class GraphWidget(QtGui.QWidget):
         self.numPrecisionY = numPrecisionY
 
         #Grid Layout
-        grid = QtGui.QGridLayout()
+        grid = QtWidgets.QGridLayout()
         self.setLayout(grid)
         #Canvas and Toolbar
         self.figure = plt.figure()
@@ -347,7 +347,7 @@ class GraphWidget(QtGui.QWidget):
         self.ax = self.figure.add_subplot(111)
 
         #change the parameter in the viewgraph
-        self.btnAddParam = QtGui.QPushButton('&Add',self)
+        self.btnAddParam = QtWidgets.QPushButton('&Add',self)
         self.btnAddParam.setFixedSize(50, 30)
         self.btnAddParam.setFlat(True)
         # FIX ME: use icon instead of text
@@ -355,14 +355,14 @@ class GraphWidget(QtGui.QWidget):
         self.btnAddParam.setToolTip('Add Parameter')
 
         # modify plotted parameter
-        self.btnEditParam = QtGui.QPushButton('&Change',self)
+        self.btnEditParam = QtWidgets.QPushButton('&Change',self)
         self.btnEditParam.setFixedSize(80, 30)
         self.btnEditParam.setFlat(True)
         # FIX ME: use icon instead of text
         # self.btnEditParam.setIcon(QtGui.QIcon('utilities/icons/edit.png'))
         self.btnEditParam.setToolTip('Modify plotted parameter')
 
-        hbox = QtGui.QHBoxLayout()
+        hbox = QtWidgets.QHBoxLayout()
         hbox.addWidget(self.btnAddParam)
         hbox.addWidget(self.btnEditParam)
 
@@ -402,7 +402,8 @@ class GraphWidget(QtGui.QWidget):
         if event.dblclick and not event.xdata is None:
             self.mDblPress[0] = event.xdata
             self.mDblPress[1] = event.ydata
-            text, ok = QtGui.QInputDialog.getText(self, 'Input Dialog',
+
+            text, ok = QtWidgets.QInputDialog.getText(self, 'Input Dialog',
                                                   'Enter new node value:')
 
             if ok:
@@ -444,6 +445,13 @@ class GraphWidget(QtGui.QWidget):
                             self.canvas.draw()
                             self.key = "No"
                             break
+                    # append the new point to the history if the last item in history differs
+                    # from the new point
+                    if not self.historyList[len(self.historyList)-1] == self.parVals[:]:
+                        self.historyList.append(self.parVals[:])
+
+                    self.mPress[0] = None
+                    self.mPress[1] = None
 
 
 
@@ -563,7 +571,7 @@ class GraphWidget(QtGui.QWidget):
 
         Displays a messagebox that informs user there's no previous action to be undone
         """
-        QtGui.QMessageBox.information(self, "Information", "History list is exhausted")
+        QtWidgets.QMessageBox.information(self, "Information", "History list is exhausted")
 
 
     def firstPlot(self):
@@ -696,7 +704,7 @@ class GraphWidget(QtGui.QWidget):
                     self.key = "No"
                     break
 
-class SMWindow(QtGui.QWidget):
+class SMWindow(QtWidgets.QWidget):
 
     def __init__(self, par, xVal, gwDict):
         super(SMWindow, self).__init__()
@@ -709,12 +717,12 @@ class SMWindow(QtGui.QWidget):
         self.prevParVal = ""
         self.counter = 0
 
-        self.parameter = QtGui.QComboBox()
+        self.parameter = QtWidgets.QComboBox()
         # self.parameter.setEditable(True)
         self.parameter.addItem("Select Parameter")
         for i in self.par:
             self.parameter.addItem(i)
-        self.parameter.setAutoCompletion(True)
+        # self.parameter.setAutoCompletion(True) : doesn't work in PyQt5
         self.parameter.setStyleSheet("QComboBox { combobox-popup: 0; }")
         self.parameter.setMaxVisibleItems(5)
         index = self.parameter.findText("Select Parameter", QtCore.Qt.MatchFixedString)
@@ -722,47 +730,47 @@ class SMWindow(QtGui.QWidget):
         self.parameter.currentIndexChanged.connect(self.onChangeEvent)
         # run a for loop here to gather all they loaded parameters and populate as many text boxes
 
-        self.xLabel = QtGui.QLabel("RADI")
-        self.xMin = QtGui.QLineEdit()
+        self.xLabel = QtWidgets.QLabel("RADI")
+        self.xMin = QtWidgets.QLineEdit()
         self.xMin.setPlaceholderText("RADI min ("+str(self.xMinVal)+")")
-        self.xMax = QtGui.QLineEdit()
+        self.xMax = QtWidgets.QLineEdit()
         self.xMax.setPlaceholderText("RADI max ("+str(self.xMaxVal)+")")
-        self.xGrid = QtGui.QGridLayout()
+        self.xGrid = QtWidgets.QGridLayout()
         self.xGrid.setSpacing(10)
         self.xGrid.addWidget(self.xLabel, 1, 0)
         self.xGrid.addWidget(self.xMin, 2, 0)
         self.xGrid.addWidget(self.xMax, 2, 1)
 
-        self.yMin = QtGui.QLineEdit()
-        self.yMax = QtGui.QLineEdit()
-        self.yGrid = QtGui.QGridLayout()
+        self.yMin = QtWidgets.QLineEdit()
+        self.yMax = QtWidgets.QLineEdit()
+        self.yGrid = QtWidgets.QGridLayout()
         self.yGrid.setSpacing(10)
         self.yGrid.addWidget(self.parameter, 1, 0)
         self.yGrid.addWidget(self.yMin, 2, 0)
         self.yGrid.addWidget(self.yMax, 2, 1)
 
-        self.hbox = QtGui.QHBoxLayout()
+        self.hbox = QtWidgets.QHBoxLayout()
         self.hbox.addStretch(1)
-        self.radioFree = QtGui.QRadioButton("Free")
-        self.radioViewG = QtGui.QRadioButton("Beyond Viewgraph")
+        self.radioFree = QtWidgets.QRadioButton("Free")
+        self.radioViewG = QtWidgets.QRadioButton("Beyond Viewgraph")
         self.hbox.addWidget(self.radioFree)
         self.hbox.addWidget(self.radioViewG)
 
-        self.hboxBtns = QtGui.QHBoxLayout()
+        self.hboxBtns = QtWidgets.QHBoxLayout()
         self.hboxBtns.addStretch(1)
-        self.btnUpdate = QtGui.QPushButton('Update', self)
+        self.btnUpdate = QtWidgets.QPushButton('Update', self)
         # self.btnUpdate.clicked.connect(self.updateScale)
-        self.btnCancel = QtGui.QPushButton('Cancel', self)
+        self.btnCancel = QtWidgets.QPushButton('Cancel', self)
         # self.btnCancel.clicked.connect(self.close)
         self.hboxBtns.addWidget(self.btnUpdate)
         self.hboxBtns.addWidget(self.btnCancel)
 
-        self.fbox = QtGui.QFormLayout()
+        self.fbox = QtWidgets.QFormLayout()
         self.fbox.addRow(self.xGrid)
         self.fbox.addRow(self.yGrid)
         # self.fbox.addRow(self.parameter)
         # self.fbox.addRow(self.yhbox)
-        self.fbox.addRow(QtGui.QLabel("Scale Behaviour"), self.hbox)
+        self.fbox.addRow(QtWidgets.QLabel("Scale Behaviour"), self.hbox)
         self.fbox.addRow(self.hboxBtns)
 
         self.setLayout(self.fbox)
@@ -796,40 +804,39 @@ class SMWindow(QtGui.QWidget):
                 self.prevParVal = i
 
 
-class ParamSpec(QtGui.QWidget):
+class ParamSpec(QtWidgets.QWidget):
 
     def __init__(self, par, windowTitle):
         super(ParamSpec, self).__init__()
         self.par = par
 
-        self.parameterLabel = QtGui.QLabel("Parameter")
-        self.parameter = QtGui.QComboBox()
+        self.parameterLabel = QtWidgets.QLabel("Parameter")
+        self.parameter = QtWidgets.QComboBox()
         self.parameter.setEditable(True)
         self.parameter.addItem("Select Parameter")
         for i in self.par:
             self.parameter.addItem(i)
-        self.parameter.setAutoCompletion(True)
         self.parameter.setStyleSheet("QComboBox { combobox-popup: 0; }")
         self.parameter.setMaxVisibleItems(6)
         index = self.parameter.findText("Select Parameter", QtCore.Qt.MatchFixedString)
         self.parameter.setCurrentIndex(index)
 
 
-        self.uMeasLabel = QtGui.QLabel("Unit Measurement")
-        self.unitMeasurement = QtGui.QLineEdit()
+        self.uMeasLabel = QtWidgets.QLabel("Unit Measurement")
+        self.unitMeasurement = QtWidgets.QLineEdit()
         # self.unitMeasurement.setPlaceholderText("Unit Measurement")
 
-        self.grid = QtGui.QGridLayout()
+        self.grid = QtWidgets.QGridLayout()
         self.grid.setSpacing(10)
         self.grid.addWidget(self.parameterLabel, 1, 0)
         self.grid.addWidget(self.parameter, 1, 1)
         self.grid.addWidget(self.uMeasLabel, 2, 0)
         self.grid.addWidget(self.unitMeasurement, 2, 1)
 
-        self.btnOK = QtGui.QPushButton('OK', self)
-        self.btnCancel = QtGui.QPushButton('Cancel', self)
+        self.btnOK = QtWidgets.QPushButton('OK', self)
+        self.btnCancel = QtWidgets.QPushButton('Cancel', self)
 
-        self.hbox = QtGui.QHBoxLayout()
+        self.hbox = QtWidgets.QHBoxLayout()
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.btnOK)
         self.hbox.addWidget(self.btnCancel)
@@ -845,7 +852,7 @@ class ParamSpec(QtGui.QWidget):
 
 
 
-class MainWindow(QtGui.QMainWindow):
+class MainWindow(QtWidgets.QMainWindow):
     runNo = 0
     key = "Yes"
     loops = 0
@@ -880,74 +887,74 @@ class MainWindow(QtGui.QMainWindow):
     def initUI(self):
         self.showMaximized()
         self.setWindowTitle('TiRiFiG')
-        self.cWidget = QtGui.QWidget(self)
+        self.cWidget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.cWidget)
-        self.vLayout = QtGui.QVBoxLayout(self.cWidget)
+        self.vLayout = QtWidgets.QVBoxLayout(self.cWidget)
         # you can ignore the parent and it will still work
-        btnOpen = QtGui.QPushButton('&Open File', self.cWidget)
+        btnOpen = QtWidgets.QPushButton('&Open File', self.cWidget)
         btnOpen.setFixedSize(80, 30)
         # btnOpen.setFlat(True)
         btnOpen.setToolTip('Open .def file')
         btnOpen.clicked.connect(self.openDef)
         self.vLayout.addWidget(btnOpen)
         # you can ignore the parent and it will still work
-        self.scrollArea = QtGui.QScrollArea(self.cWidget)
+        self.scrollArea = QtWidgets.QScrollArea(self.cWidget)
         self.scrollArea.setWidgetResizable(True)
-        self.scrollAreaContent = QtGui.QWidget(self.scrollArea)
-        self.gridLayoutScroll = QtGui.QGridLayout(self.scrollAreaContent)
+        self.scrollAreaContent = QtWidgets.QWidget(self.scrollArea)
+        self.gridLayoutScroll = QtWidgets.QGridLayout(self.scrollAreaContent)
         self.scrollArea.setWidget(self.scrollAreaContent)
         self.vLayout.addWidget(self.scrollArea)
         self.createActions()
         self.createMenus()
 
     def createActions(self):
-        self.exitAction = QtGui.QAction("&Exit", self)
+        self.exitAction = QtWidgets.QAction("&Exit", self)
         self.exitAction.setShortcut("Ctrl+Q")
         self.exitAction.setStatusTip('Leave the app')
         self.exitAction.triggered.connect(self.quitApp)
 
-        self.openFile = QtGui.QAction("&Open File", self)
+        self.openFile = QtWidgets.QAction("&Open File", self)
         self.openFile.setShortcut("Ctrl+O")
         self.openFile.setStatusTip('Load .def file to be plotted')
         self.openFile.triggered.connect(self.openDef)
 
-        self.saveChanges = QtGui.QAction("&Save", self)
+        self.saveChanges = QtWidgets.QAction("&Save", self)
         self.saveChanges.setStatusTip('Save changes to .def file')
         self.saveChanges.triggered.connect(self.saveAll)
 
-        self.saveAsFile = QtGui.QAction("&Save as...", self)
+        self.saveAsFile = QtWidgets.QAction("&Save as...", self)
         self.saveAsFile.setStatusTip('Create another .def file with current '
                                      'paramater values')
         self.saveAsFile.triggered.connect(self.saveAsAll)
 
-        self.undoAction = QtGui.QAction("&Undo", self)
+        self.undoAction = QtWidgets.QAction("&Undo", self)
         self.undoAction.setShortcut("Ctrl+Z")
         self.undoAction.setStatusTip('Undo last action')
         self.undoAction.triggered.connect(self.undoCommand)
 
-        self.redoAction = QtGui.QAction("&Redo", self)
+        self.redoAction = QtWidgets.QAction("&Redo", self)
         self.redoAction.setShortcut("Ctrl+Y")
         self.redoAction.setStatusTip('Redo last action')
         self.redoAction.triggered.connect(self.redoCommand)
 
-        self.openTextEditor = QtGui.QAction("&Open Text Editor...", self)
+        self.openTextEditor = QtWidgets.QAction("&Open Text Editor...", self)
         self.openTextEditor.setStatusTip('View the current open .def file in '
                                          'preferred text editor')
         self.openTextEditor.triggered.connect(self.openEditor)
 
-        self.startTF = QtGui.QAction("&Start TiriFiC", self)
+        self.startTF = QtWidgets.QAction("&Start TiriFiC", self)
         self.startTF.setStatusTip('Starts TiRiFiC from terminal')
         self.startTF.triggered.connect(self.startTiriFiC)
 
-        self.winSpec = QtGui.QAction("&Window Specification", self)
+        self.winSpec = QtWidgets.QAction("&Window Specification", self)
         self.winSpec.setStatusTip('Determines the number of rows and columns in a plot')
         self.winSpec.triggered.connect(self.setRowCol)
 
-        self.scaleMan = QtGui.QAction("&Scale Manager", self)
+        self.scaleMan = QtWidgets.QAction("&Scale Manager", self)
         self.scaleMan.setStatusTip('Manages behaviour of scale and min and max values')
         self.scaleMan.triggered.connect(self.inProgress)
 
-        self.paraDef = QtGui.QAction("&Parameter Definition", self)
+        self.paraDef = QtWidgets.QAction("&Parameter Definition", self)
         # self.paraDef.setStatusTip('Determines which parameter is plotted')
         self.paraDef.triggered.connect(self.paraObj)
 
@@ -981,7 +988,7 @@ class MainWindow(QtGui.QMainWindow):
     def quitApp(self):
         if self.t != 0:
             self.t.cancel()
-        QtGui.qApp.quit()
+        QtWidgets.qApp.quit()
 
     def cleanUp(self):
 
@@ -1030,7 +1037,8 @@ class MainWindow(QtGui.QMainWindow):
 
         # stores file path of .def to fileName variable after user selects file in open
         # dialog box
-        self.fileName = QtGui.QFileDialog.getOpenFileName(self, "Open .def File", "~/",
+        # TODO (Samuel 28-11-2018): If cancel is selected then suppress the message in try/except below
+        self.fileName, _filter = QtWidgets.QFileDialog.getOpenFileName(self, "Open .def File", "~/",
                                                           ".def Files (*.def)")
 
         # assign texts of read lines to data variable if fileName is exists, else assign
@@ -1039,8 +1047,12 @@ class MainWindow(QtGui.QMainWindow):
             with open(self.fileName) as f:
                 data = f.readlines()
         except:
-            QtGui.QMessageBox.information(self, "Information",
+            if self.fileName == '':
+                pass
+            else:
+                QtWidgets.QMessageBox.information(self, "Information",
                                           "Empty/Invalid file specified")
+            return None
         else:
             return data
 
@@ -1175,14 +1187,17 @@ class MainWindow(QtGui.QMainWindow):
         try:
             self.getParameter(data)
         except:
-            QtGui.QMessageBox.information(self, "Information",
+            if data is None:
+                pass
+            else:
+                QtWidgets.QMessageBox.information(self, "Information",
                                           "Tilted-ring parameters not retrieved")
         else:
             self.data = data
             if self.runNo > 0:
                 # FIXME reloading another file on already opened not properly working
                 # user has to close open window and reopen file for such a case
-                QtGui.QMessageBox.information(self, "Information",
+                QtWidgets.QMessageBox.information(self, "Information",
                                               "Close app and reopen to load file. Bug "
                                               "being fixed")
                 # self.cleanUp()
@@ -1284,7 +1299,7 @@ class MainWindow(QtGui.QMainWindow):
                 break
 
     def setRowCol(self):
-        text, ok = QtGui.QInputDialog.getText(self, 'Window number Input Dialog',
+        text, ok = QtWidgets.QInputDialog.getText(self, 'Window number Input Dialog',
                                               'Specify the number of rows and columns (5,5):')
         if ok:
             if text:
@@ -1308,7 +1323,7 @@ class MainWindow(QtGui.QMainWindow):
                                     counter = k+1
                                     break
                 else:
-                    QtGui.QMessageBox.information(self, "Information",
+                    QtWidgets.QMessageBox.information(self, "Information",
                                                   "Product of Rows and Columns should"
                                                   "match the current number of parameters"
                                                   "on viewgraph")
@@ -1396,7 +1411,7 @@ class MainWindow(QtGui.QMainWindow):
         Displays a messagebox that informs user that changes have been successfully
         written to the .def file
         """
-        QtGui.QMessageBox.information(self, "Information",
+        QtWidgets.QMessageBox.information(self, "Information",
                                       "Changes successfully written to file")
 
     def saveAs(self, fileName, newVals, sKey, unitMeasurement, numPrecisionX,
@@ -1468,7 +1483,7 @@ class MainWindow(QtGui.QMainWindow):
         Displays a messagebox that informs user that changes have been successfully
         written to the .def file
         """
-        QtGui.QMessageBox.information(self, "Information", "File Successfully Saved")
+        QtWidgets.QMessageBox.information(self, "Information", "File Successfully Saved")
 
     def saveAsAll(self):
         """Creates a new .def file for all parameters in current .def file opened
@@ -1483,7 +1498,7 @@ class MainWindow(QtGui.QMainWindow):
         The saveAs function is called and updated with the current values being
         held by parameters.
         """
-        fileName = QtGui.QFileDialog.getSaveFileName(self, "Save .def file as ",
+        fileName = QtWidgets.QFileDialog.getSaveFileName(self, "Save .def file as ",
                                                      os.getcwd(),
                                                      ".def Files (*.def)")
         for i in self.gwObjects:
@@ -1562,9 +1577,9 @@ class MainWindow(QtGui.QMainWindow):
                 self.slotChangeData(self.tmpDeffile)
 
     def openEditor(self):
-        text, ok = QtGui.QInputDialog.getText(self, 'Text Editor Input Dialog',
+        text, ok = QtWidgets.QInputDialog.getText(self, 'Text Editor Input Dialog',
                                               'Enter text editor:')
-
+        # import ipdb; ipdb.set_trace()
         if ok:
 
             for i in self.gwObjects:
@@ -1576,7 +1591,7 @@ class MainWindow(QtGui.QMainWindow):
                 try:
                     run([programName, self.tmpDeffile])
                 except OSError:
-                    QtGui.QMessageBox.information(self, "Information",
+                    QtWidgets.QMessageBox.information(self, "Information",
                                                   "{} is not installed or configured"
                                                   "properly on this system.".format(programName))
             else:
@@ -1588,7 +1603,7 @@ class MainWindow(QtGui.QMainWindow):
     def inProgress(self):
         """Displays the information about feature under development
         """
-        QtGui.QMessageBox.information(self, "Information",
+        QtWidgets.QMessageBox.information(self, "Information",
                                       "This feature is under development")
 
     def SMobj(self):
@@ -1622,7 +1637,7 @@ class MainWindow(QtGui.QMainWindow):
                 counter += 1
                 # FIXME the first plot function should be invoked here
         self.sm.close
-        QtGui.QMessageBox.information(self, "Information", "Done!")
+        QtWidgets.QMessageBox.information(self, "Information", "Done!")
 
     def paramDef(self):
         global currPar, fit_par
@@ -1726,7 +1741,7 @@ class MainWindow(QtGui.QMainWindow):
             try:
                 self.parVals[self.par[parIndex]]
             except KeyError:
-                QtGui.QMessageBox.information(self, "Information",
+                QtWidgets.QMessageBox.information(self, "Information",
                                               "This parameter does not exist. Add to"
                                               "view it.")
             else:
@@ -1768,12 +1783,12 @@ class MainWindow(QtGui.QMainWindow):
         Displays a messagebox that informs user that changes have been successfully
         written to the .def file
         """
-        QtGui.QMessageBox.information(self, "Information",
+        QtWidgets.QMessageBox.information(self, "Information",
                                       "Data cube ("+self.INSET+") specified at INSET"
                                       "doesn't exist in specified directory.")
 
     def progressBar(self, cmd):
-        progress = QtGui.QProgressDialog("Operation in progress...",
+        progress = QtWidgets.QProgressDialog("Operation in progress...",
                                          "Cancel", 0, 100)
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setMaximum(self.loops*1e6)
@@ -1810,7 +1825,7 @@ class MainWindow(QtGui.QMainWindow):
                 cmd.kill()
                 break
         progress.setValue(self.loops * 1e6)
-        QtGui.QMessageBox.information(self, "Information", message)
+        QtWidgets.QMessageBox.information(self, "Information", message)
 
     def startTiriFiC(self):
         """Start TiRiFiC
@@ -1860,7 +1875,7 @@ class MainWindow(QtGui.QMainWindow):
             try:
                 cmd = run(["tirific", "deffile=", self.fileName])
             except OSError:
-                QtGui.QMessageBox.information(self, "Information",
+                QtWidgets.QMessageBox.information(self, "Information",
                                               "TiRiFiC is not installed or configured"
                                               "properly on system.")
             else:
@@ -1876,7 +1891,7 @@ def main():
     if os.path.isfile(os.getcwd() + "/tmpDeffile.def"):
         os.remove(os.getcwd() + "/tmpDeffile.def")
 
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     GUI = MainWindow()
     GUI.show()
     sys.exit(app.exec_())
