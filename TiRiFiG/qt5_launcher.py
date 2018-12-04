@@ -250,7 +250,7 @@ classes:
 """
 
 #libraries
-import os, sys, threading, time, #logging, warnings
+import os, sys, threading, time, logging, warnings
 
 # warnings.simplefilter('ignore')
 
@@ -1900,21 +1900,21 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.tirificMessage()
 
-# def logWarnings():
-#     # logging.captureWarnings(True)
-#     # logging.basicConfig(filename='test.log', format='%(asctime)s %(name)s %(levelname)s %(message)s',
-#     #                     datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO)
-#     logger = logging.getLogger(__name__)
-#     # warnings_logger = logging.getLogger("py.warnings")
+def logWarnings():
+    # logging.captureWarnings(True)
+    # logging.basicConfig(filename='test.log', format='%(asctime)s %(name)s %(levelname)s %(message)s',
+    #                     datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    # warnings_logger = logging.getLogger("py.warnings")
 
-#     formatter = logging.Formatter('%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-#     logger_file_handler = logging.FileHandler('TiRiFiG.log', mode='a')
-#     logger_file_handler.setFormatter(formatter)
+    formatter = logging.Formatter('%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    logger_file_handler = logging.FileHandler('TiRiFiG.log', mode='a')
+    logger_file_handler.setFormatter(formatter)
 
-#     logger.addHandler(logger_file_handler)
-#     # warnings_logger.addHandler(logger_file_handler)
-#     # logger.setLevel(logging.DEBUG)
-#     # warnings_logger.setLevel(logging.DEBUG)
+    logger.addHandler(logger_file_handler)
+    # warnings_logger.addHandler(logger_file_handler)
+    # logger.setLevel(logging.DEBUG)
+    # warnings_logger.setLevel(logging.DEBUG)
 
 def main():
     logWarnings()
