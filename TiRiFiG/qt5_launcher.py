@@ -250,13 +250,16 @@ classes:
 """
 
 #libraries
-import os, sys, threading, time
+import os, sys, threading, time, #logging, warnings
+
+# warnings.simplefilter('ignore')
+
 from subprocess import Popen as run
 from math import ceil
 from decimal import Decimal
 import numpy as np
 #matplotlib.use("qt4Agg")
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 #from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 from matplotlib import style
@@ -445,6 +448,10 @@ class GraphWidget(QtWidgets.QWidget):
                             self.canvas.draw()
                             self.key = "No"
                             break
+
+                    # this is just to see why the double-click is misbehaving
+                    logging.info('\nBefore the right thing is done \n\nhistoryList: {0} \n\nparVals: {1} \n\nmPress: {2} \n\nmRelease: {3} '
+                                 .format(self.historyList, self.parVals, self.mPress, self.mRelease))
                     # append the new point to the history if the last item in history differs
                     # from the new point
                     if not self.historyList[len(self.historyList)-1] == self.parVals[:]:
@@ -452,6 +459,10 @@ class GraphWidget(QtWidgets.QWidget):
 
                     self.mPress[0] = None
                     self.mPress[1] = None
+
+                    # this is just to see why the double-click is misbehaving
+                    logging.exception('\nAfter the right thing is done \n\nhistoryList: {0} \n\nparVals: {1} \n\nmPress: {2} \n\nmRelease: {3} '
+                                 .format(self.historyList, self.parVals, self.mPress, self.mRelease))
 
 
 
@@ -1192,6 +1203,8 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 QtWidgets.QMessageBox.information(self, "Information",
                                           "Tilted-ring parameters not retrieved")
+                logging.info('The tilted-ring parameters could not be retrieved from the {}'
+                             .format(self.fileName))
         else:
             self.data = data
             if self.runNo > 0:
@@ -1887,7 +1900,24 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.tirificMessage()
 
+# def logWarnings():
+#     # logging.captureWarnings(True)
+#     # logging.basicConfig(filename='test.log', format='%(asctime)s %(name)s %(levelname)s %(message)s',
+#     #                     datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO)
+#     logger = logging.getLogger(__name__)
+#     # warnings_logger = logging.getLogger("py.warnings")
+
+#     formatter = logging.Formatter('%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+#     logger_file_handler = logging.FileHandler('TiRiFiG.log', mode='a')
+#     logger_file_handler.setFormatter(formatter)
+
+#     logger.addHandler(logger_file_handler)
+#     # warnings_logger.addHandler(logger_file_handler)
+#     # logger.setLevel(logging.DEBUG)
+#     # warnings_logger.setLevel(logging.DEBUG)
+
 def main():
+    logWarnings()
     if os.path.isfile(os.getcwd() + "/tmpDeffile.def"):
         os.remove(os.getcwd() + "/tmpDeffile.def")
 
