@@ -250,7 +250,7 @@ classes:
 """
 
 #libraries
-import os, sys, threading, time
+import os, sys, threading, time, logging
 from subprocess import Popen as run
 from math import ceil
 from decimal import Decimal
@@ -311,6 +311,7 @@ class GraphWidget(QtGui.QWidget):
     mRelease = [None, None]
     mMotion = [None]
     mDblPress = [None, None]
+    last_value = 0
 
     def __init__(self, parent, xScale, yScale, choice, unitMeas, par, parVals, parValRADI,
                  historyList, key, numPrecisionX, numPrecisionY):
@@ -496,14 +497,21 @@ class GraphWidget(QtGui.QWidget):
         Returns:
         None
         """
-        # whilst the left mouse button is being clicked and mouse pointer hasnt
-        # (why not use mPress=None instead of event.button = 1)
-        # moved out of the figure canvas, capture the VROT (y-value) during mouse
+        # whilst the left mouse button is being clicked
+        # capture the VROT (y-value) during mouse
         # movement and call re-draw graph
 
-        if event.button == 1 and not event.ydata is None:
-            self.mMotion[0] = event.ydata
-            self.plotFunc()
+        if event.guiEvent.MouseMove == QtCore.QEvent.MouseMove:
+            if event.button == QtCore.Qt.LeftButton:
+                # if the mouse pointer moves out of the figure canvas use
+                # the last value to redraw the graph
+                if event.ydata is None:
+                    self.last_value += 0.1 * self.last_value
+                    self.mMotion[0] = self.last_value
+                else:
+                    self.last_value = event.ydata
+                    self.mMotion[0] = event.ydata
+                self.plotFunc()
 
     def undoKey(self):
         """Key is pressed
@@ -655,20 +663,19 @@ class GraphWidget(QtGui.QWidget):
                 if ((self.mPress[0] < (self.parValRADI[j]) + 3) and
                         (self.mPress[0] > (self.parValRADI[j]) - 3) and
                         (self.mRelease[0] is None)):
-                   # and (self.mPress[1] < (self.parVals[j])+3) and
-                   # (self.mPress[1] > (self.parVals[j])-3):
-                    self.parVals[j] = self.mMotion[0]
+                    dy = self.mMotion[0] - self.parVals[j]
+                    self.parVals[j]+= dy
                     self.ax.clear()
                     self.ax.set_xlim(self.xScale[0], self.xScale[1])
                     if self.choice == "Beyond Viewgraph":
-                        if self.mMotion[0] >= 0.85*self.yScale[1]:
+                        if self.parVals[j] >= 0.85*self.yScale[1]:
                             self.yScale = [int(ceil(min(self.parVals) -
                                                     0.1 * (max(self.parVals) -
                                                            min(self.parVals)))),
                                            int(ceil(max(self.parVals) +
                                                     0.1 * (max(self.parVals) -
                                                            min(self.parVals))))]
-                        elif abs(self.mMotion[0]) <= abs(1.15 * self.yScale[0]):
+                        elif abs(self.parVals[j]) <= abs(1.15 * self.yScale[0]):
                             self.yScale = [int(ceil(min(self.parVals) -
                                                     0.1 * (max(self.parVals) -
                                                            min(self.parVals)))),
@@ -1046,7 +1053,7 @@ class MainWindow(QtGui.QMainWindow):
             with open(self.fileName) as f:
                 data = f.readlines()
         except:
-            if self.fileName == ''
+            if self.fileName == '':
                 pass
             else:
                 QtGui.QMessageBox.information(self, "Information",
