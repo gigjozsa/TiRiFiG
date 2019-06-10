@@ -50,7 +50,6 @@ classes:
         Instance variables:
             xScale         (list):         upper and lower limit of x-axis.
             yScale         (list):         upper and lower limit of y-axis.
-            choice         (string):       binary value which determines scale behaviour.
             unitMeas       (string):       the unit measurement for the parameter.
             par            (string):       a specific tilted-ring parameter.
             parVals        (list):         the values of  variable par (y-values on
@@ -102,8 +101,7 @@ classes:
             xMaxVal        (int):          the value of the max x value of the parameter
                                            in focus.
             par            (list):         list of all tilted-ring parameters
-            gwDict         (dictionary):   filtered dictionary with only y-scale and
-                                           choice value for each parameter.
+            gwDict         (dictionary):   filtered dictionary with only y-scale
             prevParVal     (string):       previous parameter value.
             parameter      (QComboBox):    drop down of all parameters retrieved from the
                                            variable <par>.
@@ -153,8 +151,6 @@ classes:
                                            viewgraphs are created.
             nrows           (int):         the number of rows in grid layout where
                                            viewgraphs are created.
-            choice          (string):      scale behaviour of viewgraph as points are
-                                           dragged (free/beyond viewgraph).
             INSET           (string):      name of data cube retrieved from .def file.
             par             (list):        list of tilted-ring parameters.
             unitMeas        (list):        list of unit measurement for respective
@@ -311,13 +307,13 @@ class GraphWidget(QtGui.QWidget):
     mRelease = [None, None]
     mMotion = [None]
     mDblPress = [None, None]
+    last_value = 0
 
-    def __init__(self, parent, xScale, yScale, choice, unitMeas, par, parVals, parValRADI,
+    def __init__(self, parent, xScale, yScale, unitMeas, par, parVals, parValRADI,
                  historyList, key, numPrecisionX, numPrecisionY):
         super(GraphWidget, self).__init__(parent)
         self.xScale = xScale
         self.yScale = yScale
-        self.choice = choice
         self.unitMeas = unitMeas
         self.par = par
         self.parVals = parVals
@@ -444,6 +440,13 @@ class GraphWidget(QtGui.QWidget):
                             self.canvas.draw()
                             self.key = "No"
                             break
+                    # append the new point to the history if the last item in history differs
+                    # from the new point
+                    if not self.historyList[len(self.historyList)-1] == self.parVals[:]:
+                        self.historyList.append(self.parVals[:])
+
+                    self.mPress[0] = None
+                    self.mPress[1] = None
 
 
 
@@ -489,14 +492,21 @@ class GraphWidget(QtGui.QWidget):
         Returns:
         None
         """
-        # whilst the left mouse button is being clicked and mouse pointer hasnt
-        # (why not use mPress=None instead of event.button = 1)
-        # moved out of the figure canvas, capture the VROT (y-value) during mouse
+        # whilst the left mouse button is being clicked
+        # capture the VROT (y-value) during mouse
         # movement and call re-draw graph
 
-        if event.button == 1 and not event.ydata is None:
-            self.mMotion[0] = event.ydata
-            self.plotFunc()
+        if event.guiEvent.MouseMove == QtCore.QEvent.MouseMove:
+            if event.button == QtCore.Qt.LeftButton:
+                # if the mouse pointer moves out of the figure canvas use
+                # the last value to redraw the graph
+                if event.ydata is None:
+                    self.last_value += 0.1 * self.last_value
+                    self.mMotion[0] = self.last_value
+                else:
+                    self.last_value = event.ydata
+                    self.mMotion[0] = event.ydata
+                self.plotFunc()
 
     def undoKey(self):
         """Key is pressed
@@ -513,8 +523,8 @@ class GraphWidget(QtGui.QWidget):
         re-draws graph
         """
         if len(self.historyList) > 1:
-            self.redo.append([self.scaleChange, self.choice, self.numPrecisionY,
-                              self.parVals[:], self.historyList[-1], self.yScale[:]])
+            self.redo.append([self.scaleChange, self.numPrecisionY, self.parVals[:], 
+                              self.historyList[-1], self.yScale[:]])
             self.historyList.pop()
             self.parVals = self.historyList[-1][:]
             self.key = "Yes"
@@ -539,7 +549,6 @@ class GraphWidget(QtGui.QWidget):
 
         if len(self.redo) > 0:
             self.scaleChange = self.redo[-1][0]
-            self.choice = self.redo[-1][1]
             self.numPrecisionY = self.redo[-1][2]
             self.parVals = self.redo[-1][3][:]
             self.historyList.append(self.redo[-1][4][:])
@@ -648,47 +657,48 @@ class GraphWidget(QtGui.QWidget):
                 if ((self.mPress[0] < (self.parValRADI[j]) + 3) and
                         (self.mPress[0] > (self.parValRADI[j]) - 3) and
                         (self.mRelease[0] is None)):
-                   # and (self.mPress[1] < (self.parVals[j])+3) and
-                   # (self.mPress[1] > (self.parVals[j])-3):
-                    self.parVals[j] = self.mMotion[0]
+                    dy = self.mMotion[0] - self.parVals[j]
+                    if self.par == 'PA':
+                        print "motion: {0}, parVals[j]: {0}".format(self.mMotion[0], self.parVals[j])
+                        print "dy : {}".format(dy)
+                    self.parVals[j]+= dy
+                    # print dy
                     self.ax.clear()
                     self.ax.set_xlim(self.xScale[0], self.xScale[1])
-                    if self.choice == "Beyond Viewgraph":
-                        if self.mMotion[0] >= 0.85*self.yScale[1]:
-                            self.yScale = [int(ceil(min(self.parVals) -
-                                                    0.1 * (max(self.parVals) -
-                                                           min(self.parVals)))),
-                                           int(ceil(max(self.parVals) +
-                                                    0.1 * (max(self.parVals) -
-                                                           min(self.parVals))))]
-                        elif abs(self.mMotion[0]) <= abs(1.15 * self.yScale[0]):
-                            self.yScale = [int(ceil(min(self.parVals) -
-                                                    0.1 * (max(self.parVals) -
-                                                           min(self.parVals)))),
-                                           int(ceil(max(self.parVals) +
-                                                    0.1 * (max(self.parVals) -
-                                                           min(self.parVals))))]
-                    elif self.choice == "Free":
-                        if (max(self.parVals) - min(self.parVals)) <= 100:
-                            self.yScale = [int(ceil(min(self.parVals)-
-                                                    0.1 * (max(self.parVals) -
-                                                           min(self.parVals)))),
-                                           int(ceil(max(self.parVals) +
-                                                    0.1 * (max(self.parVals) -
-                                                           min(self.parVals))))]
-                        else:
-                            self.yScale = [int(ceil(min(self.parVals) -
-                                                    0.1 * (max(self.parVals) -
-                                                           min(self.parVals)))),
-                                           int(ceil(max(self.parVals) +
-                                                    0.1 * (max(self.parVals) -
-                                                           min(self.parVals))))]
-
+                    if dy < 0:
+                        self.yScale[0] += dy
+                        self.yScale[1] -= dy
+                    else:
+                        self.yScale[0] -= dy
+                        self.yScale[1] += dy
+                        
+                    # self.ax.set_ylim(self.yScale[0], self.yScale[1])
+                    if self.par == 'PA':
+                        print self.parVals[j]
+                    # if self.parVals[j] >= 0.85*self.yScale[1]:
+                    #     # print "prev: {}".format(self.yScale)
+                    #     self.yScale = [int(ceil(min(self.parVals) -
+                    #                             0.1 * (max(self.parVals) -
+                    #                                     min(self.parVals)))),
+                    #                     int(ceil(max(self.parVals) +
+                    #                             0.1 * (max(self.parVals) -
+                    #                                     min(self.parVals))))]
+                    #     # print "after: {}".format(self.yScale)
+                    # elif abs(self.parVals[j]) <= abs(1.15 * self.yScale[0]):
+                    #     self.yScale = [int(ceil(min(self.parVals) -
+                    #                             0.1 * (max(self.parVals) -
+                    #                                     min(self.parVals)))),
+                    #                     int(ceil(max(self.parVals) +
+                    #                             0.1 * (max(self.parVals) -
+                    #                                     min(self.parVals))))]
+                    # 
+                    self.ax.set_autoscaley_on(True)
                     self.ax.set_xlabel("RADI (arcsec)")
                     self.ax.set_ylabel(self.par + "( "+self.unitMeas+ " )")
                     # self.ax.plot(self.parVals['RADI'],
                     # self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
                     self.ax.plot(self.parValRADI, self.parVals, '--bo')
+                    # self.ax.set_ylim(self.yScale[0], self.yScale[1])
                     # self.ax[i].set_title('Plot')
                     self.ax.set_xticks(self.parValRADI)
                     # plt.tight_layout()
@@ -777,8 +787,6 @@ class SMWindow(QtGui.QWidget):
         if self.yMin.text():
             self.gwDict[self.prevParVal][0][0] = int(str(self.yMin.text()))
             self.gwDict[self.prevParVal][0][1] = int(str(self.yMax.text()))
-            choice = "Free" if self.radioFree.isChecked() else "Beyond Viewgraph"
-            self.gwDict[self.prevParVal][1] = choice
 
         for i in self.par:
             if str(self.parameter.currentText()) == i:
@@ -850,7 +858,6 @@ class MainWindow(QtGui.QMainWindow):
     key = "Yes"
     loops = 0
     ncols = 1; nrows = 4
-    choice = "Beyond Viewgraph"
     INSET = 'None'
     par = ['VROT', 'SBR', 'INCL', 'PA']
     tmpDeffile = os.getcwd() + "/tmpDeffile.def"
@@ -989,7 +996,6 @@ class MainWindow(QtGui.QMainWindow):
 
         self.key = "Yes"
         self.ncols = 1; self.nrows = 4
-        self.choice = "Beyond Viewgraph"
         self.INSET = 'None'
         self.par = ['VROT', 'SBR', 'INCL', 'PA']
         self.unitMeas = ['km/s', 'Jy km/s/sqarcs', 'degrees', 'degrees']
@@ -1039,8 +1045,12 @@ class MainWindow(QtGui.QMainWindow):
             with open(self.fileName) as f:
                 data = f.readlines()
         except:
-            QtGui.QMessageBox.information(self, "Information",
+            if self.fileName == '':
+                pass
+            else:
+                QtGui.QMessageBox.information(self, "Information",
                                           "Empty/Invalid file specified")
+            return None
         else:
             return data
 
@@ -1175,7 +1185,10 @@ class MainWindow(QtGui.QMainWindow):
         try:
             self.getParameter(data)
         except:
-            QtGui.QMessageBox.information(self, "Information",
+            if data is None:
+                pass
+            else:
+                QtGui.QMessageBox.information(self, "Information",
                                           "Tilted-ring parameters not retrieved")
         else:
             self.data = data
@@ -1248,7 +1261,6 @@ class MainWindow(QtGui.QMainWindow):
                     unit = fit_par[key] if key in fit_par.keys() else ""
                     self.gwObjects.append(GraphWidget(self.scrollArea, self.xScale,
                                                       self.yScale[key][:],
-                                                      self.choice,
                                                       unit, key,
                                                       self.parVals[key][:],
                                                       self.parVals['RADI'][:],
@@ -1594,7 +1606,7 @@ class MainWindow(QtGui.QMainWindow):
     def SMobj(self):
         filtGwObj = {}
         for i in self.gwObjects:
-            filtGwObj[i.par] = [i.yScale, i.choice]
+            filtGwObj[i.par] = [i.yScale]
         self.sm = SMWindow(self.par, self.xScale, filtGwObj)
         self.sm.show()
         self.sm.btnUpdate.clicked.connect(self.updateScale)
@@ -1609,15 +1621,12 @@ class MainWindow(QtGui.QMainWindow):
         if len(self.sm.yMin.text()) > 0:
             self.sm.gwDict[self.sm.prevParVal][0][0] = int(str(self.sm.yMin.text()))
             self.sm.gwDict[self.sm.prevParVal][0][1] = int(str(self.sm.yMax.text()))
-            choice = "Free" if self.sm.radioFree.isChecked() else "Beyond Viewgraph"
-            self.sm.gwDict[self.sm.prevParVal][1] = choice
 
         argKeys = [i for i in self.sm.gwDict]
         counter = 0
         for i in self.gwObjects:
             if i.par == argKeys[counter]:
                 i.yScale = self.sm.gwDict[argKeys[counter]][0]
-                i.choice = self.sm.gwDict[argKeys[counter]][1]
                 i.xScale = [self.sm.xMinVal, self.sm.xMaxVal]
                 counter += 1
                 # FIXME the first plot function should be invoked here
@@ -1648,7 +1657,6 @@ class MainWindow(QtGui.QMainWindow):
                                       GraphWidget(self.scrollArea,
                                                   self.xScale,
                                                   self.yScale[self.par[parIndex+1]],
-                                                  self.choice,
                                                   unitMeas,
                                                   self.par[parIndex+1],
                                                   self.parVals[self.par[parIndex+1]],
