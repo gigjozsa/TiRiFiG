@@ -246,24 +246,34 @@ classes:
 """
 
 #libraries
-import os, sys, threading, time
+import os, sys, threading, time, logging
 from subprocess import Popen as run
 from math import ceil
 from decimal import Decimal
 import numpy as np
-#matplotlib.use("qt4Agg")
+import matplotlib
+matplotlib.use("qt4Agg")
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 #from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 from matplotlib import style
-style.use("ggplot")
+style.use("seaborn")
 from PyQt4 import QtGui, QtCore
 
 currPar = None
-fit_par = {'SBR':'Jy km s-1 arcsec-2', 'RADI':'arcsec', 'VROT':'km s-1', 'Z0':'arcsec',
-           'SDIS':'km s-1', 'INCL':'degrees', 'PA':'degrees', 'XPOS':'degrees',
-           'YPOS':'degrees', 'VSYS':'km s-1', 'DVRO':'km s-1 arcsec-1',
-           'DVRA':'km s-1 arcsec-1', 'VRAD': 'km s-1'}
+fit_par = {'SBR':'Jy km s-1 arcsec-2',
+           'RADI':'arcsec', 
+           'VROT':'km s-1', 
+           'Z0':'arcsec',
+           'SDIS':'km s-1',
+           'INCL':'degrees',
+           'PA':'degrees',
+           'XPOS':'degrees',
+           'YPOS':'degrees',
+           'VSYS':'km s-1',
+           'DVRO':'km s-1 arcsec-1',
+           'DVRA':'km s-1 arcsec-1',
+           'VRAD': 'km s-1'}
 
 def _center(self):
     """Centers the window
@@ -323,10 +333,10 @@ class GraphWidget(QtGui.QWidget):
         self.numPrecisionX = numPrecisionX
         self.numPrecisionY = numPrecisionY
 
-        #Grid Layout
+        # Grid Layout
         grid = QtGui.QGridLayout()
         self.setLayout(grid)
-        #Canvas and Toolbar
+        # Canvas and Toolbar
         self.figure = plt.figure()
 
         self.canvas = FigureCanvas(self.figure)
@@ -342,7 +352,7 @@ class GraphWidget(QtGui.QWidget):
 
         self.ax = self.figure.add_subplot(111)
 
-        #change the parameter in the viewgraph
+        # button to add another tilted-ring parameter to plot
         self.btnAddParam = QtGui.QPushButton('&Add',self)
         self.btnAddParam.setFixedSize(50, 30)
         self.btnAddParam.setFlat(True)
@@ -371,6 +381,23 @@ class GraphWidget(QtGui.QWidget):
         global currPar
         currPar = self.par
 
+    def _almost_equal(self, a, b, rel_tol=5e-2, abs_tol=0.0):
+        '''Takes two values return true if they are almost equal'''
+        diff = abs(b - a)
+        return (diff <= abs(rel_tol * b)) or (diff <= abs_tol)
+    
+    def _over_and_above(self, a, b, switch):
+        '''Takes two values return true if they are far apart'''
+        # if input values are the same sign
+        if (np.sign(a) == np.sign(b)):
+            if switch == 'min':
+                return a <= b
+            else:
+                return a >= b
+        else:
+            # case1: max +ve and top -ve
+            # case2: min -ve and bottom +ve 
+            return ((a > 0 and b < 0) or (a < 0 and b > 0))
 
     def getClick(self, event):
         """Left mouse button is clicked
@@ -403,43 +430,44 @@ class GraphWidget(QtGui.QWidget):
 
             if ok:
                 if text:
-                    newVal = int(str(text))
+                    newVal = float(str(text))
                     for j in range(len(self.parValRADI)):
-                        if (
-                                (self.mDblPress[0] < (self.parValRADI[j])+3) and
-                                (self.mDblPress[0] > (self.parValRADI[j])-3) and
-                                (self.mDblPress[1] < (self.parVals[j])+3) and
-                                (self.mDblPress[1] > (self.parVals[j])-3)
-                            ):
+                        if ((self.mDblPress[0] < (self.parValRADI[j])+3) and
+                            (self.mDblPress[0] > (self.parValRADI[j])-3)):
 
                             self.parVals[j] = newVal
-
+                            bottom, top = self.ax.get_ylim()
                             self.ax.clear()
                             self.ax.set_xlim(self.xScale[0], self.xScale[1])
+                            max_yvalue = max(self.parVals)
+                            min_yvalue = min(self.parVals)
+                            
+                            if self._over_and_above(min_yvalue, bottom, 'min'):
+                                bottom = min_yvalue - (0.1*(max_yvalue-min_yvalue))
+                                # this line is optional, only bottom scale should change
+                                top = max_yvalue + (0.1*(max_yvalue-min_yvalue))
+                            elif self._over_and_above(max_yvalue, top, 'max'):
+                                top = max_yvalue + (0.1*(max_yvalue-min_yvalue))
+                                # this line is optional, only top scale should change
+                                bottom = min_yvalue - (0.1*(max_yvalue-min_yvalue))
+                            elif self._almost_equal(min_yvalue, bottom, rel_tol=1e-2):
+                                bottom = min_yvalue - (0.1*(max_yvalue-min_yvalue))
+                                # this line is optional, only bottom scale should change
+                                top = max_yvalue + (0.1*(max_yvalue-min_yvalue))
+                            elif self._almost_equal(max_yvalue, top, rel_tol=1e-2):
+                                top = max_yvalue + (0.1*(max_yvalue-min_yvalue))
+                                # this line is optional, only top scale should change
+                                bottom = min_yvalue - (0.1*(max_yvalue-min_yvalue))
 
-                            if np.subtract(max(self.parVals), min(self.parVals)) == 0:
-                                self.yScale = [-100, 100]
-                            elif (max(self.parVals) - min(self.parVals)) <= 100:
-                                self.yScale = [int(ceil(-2 * max(self.parVals))),
-                                               int(ceil(2 * max(self.parVals)))]
-                            else:
-                                self.yScale = [
-                                    int(ceil(min(self.parVals) -
-                                             0.1 * (max(self.parVals) -
-                                                    min(self.parVals)))),
-                                    int(ceil(max(self.parVals) +
-                                             0.1 * (max(self.parVals) -
-                                                    min(self.parVals))))]
-
+                            self.ax.set_ylim(bottom, top)
                             self.ax.set_xlabel("RADI (arcsec)")
                             self.ax.set_ylabel(self.par + "( "+self.unitMeas+ " )")
                             self.ax.plot(self.parValRADI, self.parVals, '--bo')
-                            # self.ax[i].set_title('Plot')
                             self.ax.set_xticks(self.parValRADI)
-                            # plt.tight_layout()
                             self.canvas.draw()
                             self.key = "No"
                             break
+
                     # append the new point to the history if the last item in history differs
                     # from the new point
                     if not self.historyList[len(self.historyList)-1] == self.parVals[:]:
@@ -447,8 +475,6 @@ class GraphWidget(QtGui.QWidget):
 
                     self.mPress[0] = None
                     self.mPress[1] = None
-
-
 
     def getRelease(self, event):
         """Left mouse button is released
@@ -589,13 +615,11 @@ class GraphWidget(QtGui.QWidget):
         """
         self.ax.clear()
         self.ax.set_xlim(self.xScale[0], self.xScale[1])
-        # self.ax.set_ylim(self.yScale[0], self.yScale[1])
+        self.ax.set_ylim(self.yScale[0], self.yScale[1])
         self.ax.set_xlabel("RADI (arcsec)")
         self.ax.set_ylabel(self.par + "( "+self.unitMeas+ " )")
         self.ax.plot(self.parValRADI, self.historyList[-1], '--bo')
-        # self.ax.set_title('RADI by %s'%self.par)
         self.ax.set_xticks(self.parValRADI)
-        # plt.tight_layout()
         self.canvas.draw()
         self.key = "No"
 
@@ -611,41 +635,41 @@ class GraphWidget(QtGui.QWidget):
 
         Produces view graph from historyList or parVals
         """
+        # TODO (sam 28/05/2019) define how plotting will be done for scale change option
 
-        if self.scaleChange == "Yes":
+        # if self.scaleChange == "Yes":
+        #     for i in range(len(self.par)):
+        #         self.ax.clear()
+        #         self.ax.set_xlim(self.xScale[0], self.xScale[1])
+        #         if (max(self.parVals[self.par[i]]) -
+        #                 min(self.parVals[self.par[i]])) <= 100:
+        #             self.yScale[self.par[i]] = [
+        #                 int(ceil(-2 * max(self.parVals[self.par[i]]))),
+        #                 int(ceil(2 * max(self.parVals[self.par[i]])))]
+        #         else:
+        #             self.yScale[self.par[i]] = [
+        #                 int(ceil(min(self.parVals[self.par[i]]) -
+        #                          0.1 * (max(self.parVals[self.par[i]]) -
+        #                                 min(self.parVals[self.par[i]])))),
+        #                 int(ceil(max(self.parVals[self.par[i]]) +
+        #                          0.1 * (max(self.parVals[self.par[i]]) -
+        #                                 min(self.parVals[self.par[i]]))))
+        #                 ]
 
-            for i in range(len(self.par)):
-                self.ax[i].clear()
-                self.ax[i].set_xlim(self.xScale[0], self.xScale[1])
-                if (max(self.parVals[self.par[i]]) -
-                        min(self.parVals[self.par[i]])) <= 100:
-                    self.yScale[self.par[i]] = [
-                        int(ceil(-2 * max(self.parVals[self.par[i]]))),
-                        int(ceil(2 * max(self.parVals[self.par[i]])))]
-                else:
-                    self.yScale[self.par[i]] = [
-                        int(ceil(min(self.parVals[self.par[i]]) -
-                                 0.1 * (max(self.parVals[self.par[i]]) -
-                                        min(self.parVals[self.par[i]])))),
-                        int(ceil(max(self.parVals[self.par[i]]) +
-                                 0.1 * (max(self.parVals[self.par[i]]) -
-                                        min(self.parVals[self.par[i]]))))
-                        ]
+        #         self.ax.set_ylim(self.yScale[self.par[i]][0],
+        #                             self.yScale[self.par[i]][1])
+        #         self.ax.set_xlabel("RADI (arcsec)")
+        #         self.ax.set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
+        #         self.ax.plot(
+        #             self.parVals['RADI'],
+        #             self.historyList[self.par[i]][len(self.historyList[self.par[i]])-1],
+        #             '--bo')
+        #         # self.ax[i].set_title('Plot')
+        #         self.ax.set_xticks(self.parVals['RADI'])
 
-                self.ax[i].set_ylim(self.yScale[self.par[i]][0],
-                                    self.yScale[self.par[i]][1])
-                self.ax[i].set_xlabel("RADI (arcsec)")
-                self.ax[i].set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
-                self.ax[i].plot(
-                    self.parVals['RADI'],
-                    self.historyList[self.par[i]][len(self.historyList[self.par[i]])-1],
-                    '--bo')
-                # self.ax[i].set_title('Plot')
-                self.ax[i].set_xticks(self.parVals['RADI'])
-
-            # plt.tight_layout()
-            self.canvas.draw()
-            self.key = "No"
+        #     # plt.tight_layout()
+        #     self.canvas.draw()
+        #     self.key = "No"
 
         if self.key == "Yes":
             self.firstPlot()
@@ -658,50 +682,38 @@ class GraphWidget(QtGui.QWidget):
                         (self.mPress[0] > (self.parValRADI[j]) - 3) and
                         (self.mRelease[0] is None)):
                     dy = self.mMotion[0] - self.parVals[j]
-                    if self.par == 'PA':
-                        print "motion: {0}, parVals[j]: {0}".format(self.mMotion[0], self.parVals[j])
-                        print "dy : {}".format(dy)
                     self.parVals[j]+= dy
-                    # print dy
+                    bottom, top = self.ax.get_ylim()
                     self.ax.clear()
                     self.ax.set_xlim(self.xScale[0], self.xScale[1])
-                    if dy < 0:
-                        self.yScale[0] += dy
-                        self.yScale[1] -= dy
+                    max_yvalue = max(self.parVals)
+                    min_yvalue = min(self.parVals)
+
+                    # FIX ME (sam 28/05/2019): scaling points closest to the limit should be relooked
+                    if ((self.mMotion[0]/min_yvalue) >= 0.95) or ((self.mMotion[0]/max_yvalue) >= 0.95):
+                        if self._almost_equal(self.mMotion[0], bottom, rel_tol=5e-2):
+                            bottom = min_yvalue - (0.05*(max_yvalue-min_yvalue))
+                            # this line is optional, only bottom scale should change
+                            top = max_yvalue + (0.05*(max_yvalue-min_yvalue))
+                        elif self._almost_equal(self.mMotion[0], top, rel_tol=5e-2):
+                            top = max_yvalue + (0.05*(max_yvalue-min_yvalue))
+                            # this line is optional, only top scale should change
+                            bottom = min_yvalue - (0.05*(max_yvalue-min_yvalue))
                     else:
-                        self.yScale[0] -= dy
-                        self.yScale[1] += dy
-                        
-                    # self.ax.set_ylim(self.yScale[0], self.yScale[1])
-                    if self.par == 'PA':
-                        print self.parVals[j]
-                    # if self.parVals[j] >= 0.85*self.yScale[1]:
-                    #     # print "prev: {}".format(self.yScale)
-                    #     self.yScale = [int(ceil(min(self.parVals) -
-                    #                             0.1 * (max(self.parVals) -
-                    #                                     min(self.parVals)))),
-                    #                     int(ceil(max(self.parVals) +
-                    #                             0.1 * (max(self.parVals) -
-                    #                                     min(self.parVals))))]
-                    #     # print "after: {}".format(self.yScale)
-                    # elif abs(self.parVals[j]) <= abs(1.15 * self.yScale[0]):
-                    #     self.yScale = [int(ceil(min(self.parVals) -
-                    #                             0.1 * (max(self.parVals) -
-                    #                                     min(self.parVals)))),
-                    #                     int(ceil(max(self.parVals) +
-                    #                             0.1 * (max(self.parVals) -
-                    #                                     min(self.parVals))))]
-                    # 
-                    self.ax.set_autoscaley_on(True)
+                        if self._almost_equal(self.mMotion[0], min_yvalue):
+                            bottom = min_yvalue - (0.3*(max_yvalue-min_yvalue))
+                            # this line is optional, only bottom scale should change
+                            top = max_yvalue + (0.1*(max_yvalue-min_yvalue))
+                        elif self._almost_equal(self.mMotion[0], max_yvalue):
+                            top = max_yvalue + (0.3*(max_yvalue-min_yvalue))
+                            # this line is optional, only top scale should change
+                            bottom = min_yvalue - (0.1*(max_yvalue-min_yvalue))
+
+                    self.ax.set_ylim(bottom, top)
                     self.ax.set_xlabel("RADI (arcsec)")
                     self.ax.set_ylabel(self.par + "( "+self.unitMeas+ " )")
-                    # self.ax.plot(self.parVals['RADI'],
-                    # self.historyList[self.par][len(self.historyList[self.par])-1],'--bo')
                     self.ax.plot(self.parValRADI, self.parVals, '--bo')
-                    # self.ax.set_ylim(self.yScale[0], self.yScale[1])
-                    # self.ax[i].set_title('Plot')
                     self.ax.set_xticks(self.parValRADI)
-                    # plt.tight_layout()
                     self.canvas.draw()
                     self.key = "No"
                     break
@@ -1205,19 +1217,12 @@ class MainWindow(QtGui.QMainWindow):
             else:
 
                 # defining the x scale for plotting
-                if np.subtract(max(self.parVals['RADI']), min(self.parVals['RADI'])) == 0:
-                    self.xScale = [-100, 100]
-                elif (np.subtract(max(self.parVals['RADI']),
-                                  min(self.parVals['RADI'])) <= 100):
-                    self.xScale = [int(ceil(-2 * max(self.parVals['RADI']))),
-                                   int(ceil(2 * max(self.parVals['RADI'])))]
-                else:
-                    self.xScale = [int(ceil(min(self.parVals['RADI']) -
-                                            0.1 * (max(self.parVals['RADI']) -
-                                                   min(self.parVals['RADI'])))),
-                                   int(ceil(max(self.parVals['RADI']) +
-                                            0.1 * (max(self.parVals['RADI']) -
-                                                   min(self.parVals['RADI']))))]
+                # this is the min/max + 10% of the difference between the min and max
+                min_max_diff = max(self.parVals['RADI']) - min(self.parVals['RADI'])
+                percentage_of_min_max_diff = 0.1 * min_max_diff
+                lower_bound = min(self.parVals['RADI']) - percentage_of_min_max_diff
+                upper_bound = max(self.parVals['RADI']) + percentage_of_min_max_diff
+                self.xScale = [int(ceil(lower_bound)), int(ceil(upper_bound))]
 
                 self.scrollWidth = self.scrollAreaContent.width()
                 self.scrollHeight = self.scrollAreaContent.height()
@@ -1245,18 +1250,15 @@ class MainWindow(QtGui.QMainWindow):
                     self.historyList.clear()
                     self.historyList[key] = [self.parVals[key][:]]
 
+                    min_max_diff = max(self.parVals[key]) - min(self.parVals[key])
+                    percentage_of_min_max_diff = 0.1 * min_max_diff
+                    lower_bound = min(self.parVals[key]) - percentage_of_min_max_diff
+                    upper_bound = max(self.parVals[key]) + percentage_of_min_max_diff
+                    # are the min/max values the same
                     if np.subtract(max(self.parVals[key]), min(self.parVals[key])) == 0:
-                        self.yScale[key] = [-100, 100]
-                    elif (max(self.parVals[key]) - min(self.parVals[key])) <= 100:
-                        self.yScale[key] = [int(ceil(-2 * max(self.parVals[key]))),
-                                            int(ceil(2 * max(self.parVals[key])))]
+                        self.yScale[key] = [lower_bound/2, upper_bound*1.5]
                     else:
-                        self.yScale[key] = [int(ceil(min(self.parVals[key]) -
-                                                     0.1 * (max(self.parVals[key]) -
-                                                            min(self.parVals[key])))),
-                                            int(ceil(max(self.parVals[key]) +
-                                                     0.1 * (max(self.parVals[key]) -
-                                                            min(self.parVals[key]))))]
+                        self.yScale[key] = [lower_bound, upper_bound]
 
                     unit = fit_par[key] if key in fit_par.keys() else ""
                     self.gwObjects.append(GraphWidget(self.scrollArea, self.xScale,
@@ -1576,7 +1578,6 @@ class MainWindow(QtGui.QMainWindow):
     def openEditor(self):
         text, ok = QtGui.QInputDialog.getText(self, 'Text Editor Input Dialog',
                                               'Enter text editor:')
-
         if ok:
 
             for i in self.gwObjects:
@@ -1880,7 +1881,24 @@ class MainWindow(QtGui.QMainWindow):
         else:
             self.tirificMessage()
 
+def logWarnings():
+    # logging.captureWarnings(True)
+    # logging.basicConfig(filename='test.log', format='%(asctime)s %(name)s %(levelname)s %(message)s',
+    #                     datefmt='%m/%d/%Y %I:%M:%S %p', level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    # warnings_logger = logging.getLogger("py.warnings")
+
+    formatter = logging.Formatter('%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+    logger_file_handler = logging.FileHandler('TiRiFiG.log', mode='a')
+    logger_file_handler.setFormatter(formatter)
+
+    logger.addHandler(logger_file_handler)
+    # warnings_logger.addHandler(logger_file_handler)
+    # logger.setLevel(logging.DEBUG)
+    # warnings_logger.setLevel(logging.DEBUG)
+
 def main():
+    logWarnings()
     if os.path.isfile(os.getcwd() + "/tmpDeffile.def"):
         os.remove(os.getcwd() + "/tmpDeffile.def")
 
