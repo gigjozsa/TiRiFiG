@@ -352,7 +352,7 @@ class GraphWidget(QtWidgets.QWidget):
 
         self.ax = self.figure.add_subplot(111)
 
-        # button to change the plotted parameter
+        # button to add another tilted-ring parameter to plot
         self.btnAddParam = QtWidgets.QPushButton('&Add',self)
         self.btnAddParam.setFixedSize(50, 30)
         self.btnAddParam.setFlat(True)
@@ -468,9 +468,6 @@ class GraphWidget(QtWidgets.QWidget):
                             self.key = "No"
                             break
 
-                    # this is just to see why the double-click is misbehaving
-                    # logging.info('\nBefore the right thing is done \n\nhistoryList: {0} \n\nparVals: {1} \n\nmPress: {2} \n\nmRelease: {3} '
-                    #              .format(self.historyList, self.parVals, self.mPress, self.mRelease))
                     # append the new point to the history if the last item in history differs
                     # from the new point
                     if not self.historyList[len(self.historyList)-1] == self.parVals[:]:
@@ -523,6 +520,7 @@ class GraphWidget(QtWidgets.QWidget):
         """
         # whilst the left mouse button is being clicked
         # capture the VROT (y-value) during mouse
+        # movement and call re-draw graph
 
         if event.guiEvent.MouseMove == QtCore.QEvent.MouseMove:
             if event.button == QtCore.Qt.LeftButton:
