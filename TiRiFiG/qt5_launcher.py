@@ -38,8 +38,6 @@ classes:
 
     GraphWidget:
         Class variables:
-            scaleChange    (bool):         determines whether or not scale has been
-                                           changed.
             redo           (list):         the state of some parameters before undo
                                            action.
             mPress         (list):         x-y values of mouse click.
@@ -112,9 +110,6 @@ classes:
                                            selected parameter.
             yMax           (QLineEdit):    textbox for entering maximum value for
                                            selected parameter.
-            radioFree      (QRadioButton): specifying behaviour of viewgraph as "free".
-            radioViewG     (QRadioButton): specify behaviour of viewgraph as "beyond
-                                           viewgraph".
             btnUpdate      (QPushButton):  update variables with new values and close
                                            window.
             btnCancel      (QPushButton):  cancel changes and close window.
@@ -311,7 +306,6 @@ class TimerThread():
         self.thread.cancel()
 
 class GraphWidget(QtWidgets.QWidget):
-    scaleChange = "No"
     redo = []
     mPress = [None, None]
     mRelease = [None, None]
@@ -549,7 +543,7 @@ class GraphWidget(QtWidgets.QWidget):
         re-draws graph
         """
         if len(self.historyList) > 1:
-            self.redo.append([self.scaleChange, self.numPrecisionY, self.parVals[:], 
+            self.redo.append([self.numPrecisionY, self.parVals[:],
                               self.historyList[-1], self.yScale[:]])
             self.historyList.pop()
             self.parVals = self.historyList[-1][:]
@@ -574,7 +568,6 @@ class GraphWidget(QtWidgets.QWidget):
         """
 
         if len(self.redo) > 0:
-            self.scaleChange = self.redo[-1][0]
             self.numPrecisionY = self.redo[-1][2]
             self.parVals = self.redo[-1][3][:]
             self.historyList.append(self.redo[-1][4][:])
@@ -635,41 +628,6 @@ class GraphWidget(QtWidgets.QWidget):
 
         Produces view graph from historyList or parVals
         """
-        # TODO (sam 28/05/2019) define how plotting will be done for scale change option
-
-        # if self.scaleChange == "Yes":
-        #     for i in range(len(self.par)):
-        #         self.ax.clear()
-        #         self.ax.set_xlim(self.xScale[0], self.xScale[1])
-        #         if (max(self.parVals[self.par[i]]) -
-        #                 min(self.parVals[self.par[i]])) <= 100:
-        #             self.yScale[self.par[i]] = [
-        #                 int(ceil(-2 * max(self.parVals[self.par[i]]))),
-        #                 int(ceil(2 * max(self.parVals[self.par[i]])))]
-        #         else:
-        #             self.yScale[self.par[i]] = [
-        #                 int(ceil(min(self.parVals[self.par[i]]) -
-        #                          0.1 * (max(self.parVals[self.par[i]]) -
-        #                                 min(self.parVals[self.par[i]])))),
-        #                 int(ceil(max(self.parVals[self.par[i]]) +
-        #                          0.1 * (max(self.parVals[self.par[i]]) -
-        #                                 min(self.parVals[self.par[i]]))))
-        #                 ]
-
-        #         self.ax.set_ylim(self.yScale[self.par[i]][0],
-        #                             self.yScale[self.par[i]][1])
-        #         self.ax.set_xlabel("RADI (arcsec)")
-        #         self.ax.set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
-        #         self.ax.plot(
-        #             self.parVals['RADI'],
-        #             self.historyList[self.par[i]][len(self.historyList[self.par[i]])-1],
-        #             '--bo')
-        #         # self.ax[i].set_title('Plot')
-        #         self.ax.set_xticks(self.parVals['RADI'])
-
-        #     # plt.tight_layout()
-        #     self.canvas.draw()
-        #     self.key = "No"
 
         if self.key == "Yes":
             self.firstPlot()
@@ -765,10 +723,6 @@ class SMWindow(QtWidgets.QWidget):
 
         self.hbox = QtWidgets.QHBoxLayout()
         self.hbox.addStretch(1)
-        self.radioFree = QtWidgets.QRadioButton("Free")
-        self.radioViewG = QtWidgets.QRadioButton("Beyond Viewgraph")
-        self.hbox.addWidget(self.radioFree)
-        self.hbox.addWidget(self.radioViewG)
 
         self.hboxBtns = QtWidgets.QHBoxLayout()
         self.hboxBtns.addStretch(1)
@@ -806,13 +760,6 @@ class SMWindow(QtWidgets.QWidget):
                 self.yMin.setPlaceholderText(i+" min ("+str(self.gwDict[i][0][0])+")")
                 self.yMax.clear()
                 self.yMax.setPlaceholderText(i+" max ("+str(self.gwDict[i][0][1])+")")
-
-                if str(self.gwDict[i][1]) == "Free":
-                    self.radioFree.setChecked(True)
-                    self.radioViewG.setChecked(False)
-                else:
-                    self.radioFree.setChecked(False)
-                    self.radioViewG.setChecked(True)
                 self.prevParVal = i
 
 
@@ -968,11 +915,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.paraDef = QtWidgets.QAction("&Parameter Definition", self)
         # self.paraDef.setStatusTip('Determines which parameter is plotted')
         self.paraDef.triggered.connect(self.paraObj)
-
-        # self.sm.radioFree.clicked.connect(self.getOptF)
-        # self.sm.radioViewG.clicked.connect(self.getOptV)
-        # self.sm.btnUpdate.clicked.connect(self.updateScale)
-        # self.sm.btnCancel.clicked.connect(self.sm.close)
+        self.sm.btnUpdate.clicked.connect(self.updateScale)
+        self.sm.btnCancel.clicked.connect(self.sm.close)
 
     def createMenus(self):
         mainMenu = self.menuBar()
