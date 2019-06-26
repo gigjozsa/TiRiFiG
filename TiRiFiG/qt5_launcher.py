@@ -647,7 +647,8 @@ class GraphWidget(QtWidgets.QWidget):
                     max_yvalue = max(self.parVals)
                     min_yvalue = min(self.parVals)
 
-                    # FIX ME (sam 28/05/2019): scaling points closest to the limit should be relooked
+                    # FIX ME (sam 28/05/2019): scaling points too close to the limit should be relooked
+                    # division by zero was encountered during runtime
                     if ((self.mMotion[0]/min_yvalue) >= 0.95) or ((self.mMotion[0]/max_yvalue) >= 0.95):
                         if self._almost_equal(self.mMotion[0], bottom, rel_tol=5e-2):
                             bottom = min_yvalue - (0.05*(max_yvalue-min_yvalue))
@@ -678,14 +679,14 @@ class GraphWidget(QtWidgets.QWidget):
 
 class SMWindow(QtWidgets.QWidget):
 
-    def __init__(self, par, xVal, gwDict):
+    def __init__(self, par, xVal, gwObjects):
+        # TODO SAM (26/06/2019) no need to pass 'par' to init if we have 'gwObjects'
+        # but maybe we need it because it makes things faster
         super(SMWindow, self).__init__()
         self.xMinVal = xVal[0]
         self.xMaxVal = xVal[1]
-        # self.yMinVal = yVal[0]
-        # self.yMaxVal = yVal[1]
+        self.gwObjects = gwObjects
         self.par = par
-        self.gwDict = gwDict
         self.prevParVal = ""
         self.counter = 0
 
@@ -727,18 +728,15 @@ class SMWindow(QtWidgets.QWidget):
         self.hboxBtns = QtWidgets.QHBoxLayout()
         self.hboxBtns.addStretch(1)
         self.btnUpdate = QtWidgets.QPushButton('Update', self)
-        # self.btnUpdate.clicked.connect(self.updateScale)
+        self.btnUpdate.clicked.connect(self.updateScale)
         self.btnCancel = QtWidgets.QPushButton('Cancel', self)
-        # self.btnCancel.clicked.connect(self.close)
+        self.btnCancel.clicked.connect(self.close)
         self.hboxBtns.addWidget(self.btnUpdate)
         self.hboxBtns.addWidget(self.btnCancel)
 
         self.fbox = QtWidgets.QFormLayout()
         self.fbox.addRow(self.xGrid)
         self.fbox.addRow(self.yGrid)
-        # self.fbox.addRow(self.parameter)
-        # self.fbox.addRow(self.yhbox)
-        self.fbox.addRow(QtWidgets.QLabel("Scale Behaviour"), self.hbox)
         self.fbox.addRow(self.hboxBtns)
 
         self.setLayout(self.fbox)
@@ -748,19 +746,46 @@ class SMWindow(QtWidgets.QWidget):
         _center(self)
         self.setFocus()
 
-    def onChangeEvent(self):
+        self.gwDict = {}
+        for gwObject in self.gwObjects:
+            self.gwDict[gwObject.par] = gwObject.yScale[:]
 
+    def onChangeEvent(self):
         if self.yMin.text():
-            self.gwDict[self.prevParVal][0][0] = int(str(self.yMin.text()))
-            self.gwDict[self.prevParVal][0][1] = int(str(self.yMax.text()))
+            self.gwDict[self.prevParVal][0] = int(str(self.yMin.text()))
+        if self.yMax.text():
+            self.gwDict[self.prevParVal][1] = int(str(self.yMax.text()))
 
         for i in self.par:
             if str(self.parameter.currentText()) == i:
                 self.yMin.clear()
-                self.yMin.setPlaceholderText(i+" min ("+str(self.gwDict[i][0][0])+")")
+                self.yMin.setPlaceholderText(i+" min ("+str(self.gwDict[i][0])+")")
                 self.yMax.clear()
-                self.yMax.setPlaceholderText(i+" max ("+str(self.gwDict[i][0][1])+")")
+                self.yMax.setPlaceholderText(i+" max ("+str(self.gwDict[i][1])+")")
                 self.prevParVal = i
+
+    def updateScale (self):
+        """Change the values of the instance variables and specific graph widget plots
+        after update button is clicked.
+        """
+        if self.xMin.text():
+            self.xMinVal = int(str(self.xMin.text()))
+
+        if self.xMax.text():
+            self.xMaxVal = int(str(self.xMax.text()))
+
+        if self.yMin.text():
+            self.gwDict[self.prevParVal][0] = int(str(self.yMin.text()))
+
+        if self.yMax.text():
+            self.gwDict[self.prevParVal][1] = int(str(self.yMax.text()))
+
+        for gwObject in self.gwObjects:
+            gwObject.yScale = self.gwDict[gwObject.par][:]
+            gwObject.xScale = [self.xMinVal, self.xMaxVal]
+            gwObject.firstPlot()
+        self.close()
+        QtWidgets.QMessageBox.information(self, "Information", "Done!")
 
 
 class ParamSpec(QtWidgets.QWidget):
@@ -910,13 +935,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.scaleMan = QtWidgets.QAction("&Scale Manager", self)
         self.scaleMan.setStatusTip('Manages behaviour of scale and min and max values')
-        self.scaleMan.triggered.connect(self.inProgress)
+        self.scaleMan.triggered.connect(self.SMobj)
 
         self.paraDef = QtWidgets.QAction("&Parameter Definition", self)
         # self.paraDef.setStatusTip('Determines which parameter is plotted')
         self.paraDef.triggered.connect(self.paraObj)
-        self.sm.btnUpdate.clicked.connect(self.updateScale)
-        self.sm.btnCancel.clicked.connect(self.sm.close)
 
     def createMenus(self):
         mainMenu = self.menuBar()
@@ -1550,34 +1573,8 @@ class MainWindow(QtWidgets.QMainWindow):
                                       "This feature is under development")
 
     def SMobj(self):
-        filtGwObj = {}
-        for i in self.gwObjects:
-            filtGwObj[i.par] = [i.yScale]
-        self.sm = SMWindow(self.par, self.xScale, filtGwObj)
+        self.sm = SMWindow(self.par, self.xScale, self.gwObjects)
         self.sm.show()
-        self.sm.btnUpdate.clicked.connect(self.updateScale)
-        self.sm.btnCancel.clicked.connect(self.sm.close)
-
-    def updateScale(self):
-
-        if len(self.sm.xMin.text()) > 0:
-            self.sm.xMinVal = int(str(self.sm.xMin.text()))
-            self.sm.xMaxVal = int(str(self.sm.xMax.text()))
-
-        if len(self.sm.yMin.text()) > 0:
-            self.sm.gwDict[self.sm.prevParVal][0][0] = int(str(self.sm.yMin.text()))
-            self.sm.gwDict[self.sm.prevParVal][0][1] = int(str(self.sm.yMax.text()))
-
-        argKeys = [i for i in self.sm.gwDict]
-        counter = 0
-        for i in self.gwObjects:
-            if i.par == argKeys[counter]:
-                i.yScale = self.sm.gwDict[argKeys[counter]][0]
-                i.xScale = [self.sm.xMinVal, self.sm.xMaxVal]
-                counter += 1
-                # FIXME the first plot function should be invoked here
-        self.sm.close
-        QtWidgets.QMessageBox.information(self, "Information", "Done!")
 
     def paramDef(self):
         global currPar, fit_par
