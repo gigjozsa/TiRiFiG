@@ -1576,8 +1576,8 @@ class MainWindow(QtWidgets.QMainWindow):
                     run([programName, self.tmpDeffile])
                 except OSError:
                     QtWidgets.QMessageBox.information(self, "Information",
-                                                  "{} is not installed or configured"
-                                                  "properly on this system.".format(programName))
+                                                      "{} is not installed or configured"
+                                                      "properly on this system.".format(programName))
             else:
                 # assign current modified time of temporary def file to before
                 self.before = os.stat(self.tmpDeffile).st_mtime
@@ -1588,21 +1588,11 @@ class MainWindow(QtWidgets.QMainWindow):
         """Displays the information about feature under development
         """
         QtWidgets.QMessageBox.information(self, "Information",
-                                      "This feature is under development")
+                                          "This feature is under development")
 
     def SMobj(self):
         self.sm = SMWindow(self.par, self.xScale, self.gwObjects)
         self.sm.show()
-
-    def clear_layout(self):
-        """implementation taken from stackoverflow
-        https://stackoverflow.com/questions/4528347/
-        clear-all-widgets-in-a-layout-in-pyqt/13103617
-        """
-        while self.scroll_grid_layout.count():
-            child = self.scroll_grid_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
 
     def paramDef(self):
         global currPar, fit_par
