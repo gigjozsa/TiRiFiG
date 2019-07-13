@@ -806,8 +806,6 @@ class ParamSpec(QtGui.QWidget):
         self.parameter.setMaxVisibleItems(6)
         index = self.parameter.findText("Select Parameter", QtCore.Qt.MatchFixedString)
         self.parameter.setCurrentIndex(index)
-
-
         self.uMeasLabel = QtGui.QLabel("Unit Measurement")
         self.unitMeasurement = QtGui.QLineEdit()
         # self.unitMeasurement.setPlaceholderText("Unit Measurement")
@@ -1192,7 +1190,6 @@ class MainWindow(QtGui.QMainWindow):
                 # self.data = data
                 # self.getParameter(self.data)
             else:
-
                 # defining the x scale for plotting
                 # this is the min/max + 10% of the difference between the min and max
                 min_max_diff = max(self.parVals['RADI']) - min(self.parVals['RADI'])
@@ -1285,8 +1282,8 @@ class MainWindow(QtGui.QMainWindow):
                 break
 
     def setRowCol(self):
-        text, ok = QtGui.QInputDialog.getText(self, 'Window number Input Dialog',
-                                              'Specify the number of rows and columns (5,5):')
+        text, ok = QtGui.QInputDialog.getText(self, "Window number Input Dialog",
+                                              "Specify the number of rows and columns (5,5):")
         if ok:
             if text:
                 text = str(text)
@@ -1294,25 +1291,55 @@ class MainWindow(QtGui.QMainWindow):
                 self.nrows = int(text[0])
                 self.ncols = int(text[1])
                 if (self.nrows * self.ncols) >= len(self.par):
-                    # clear the existing graph objects before making new object for
-                    # new grid
-                    for i in reversed(range(self.scroll_area_content.count())):
-                        self.scroll_area_content.itemAt(i).widget().setParent(None)
+                    # clear the existing graph objects
+                    item_count = self.scroll_grid_layout.count()
+                    for i in range(item_count):
+                        widget_to_remove = self.scroll_grid_layout.itemAt(0).widget()
+                        self.scroll_grid_layout.removeWidget(widget_to_remove)
+                        widget_to_remove.close()
+
+                    # get only the plot widgets for the we want to plot: defined in par
+                    g_w_to_plot = [gwObject for gwObject in self.gwObjects
+                                   if gwObject.par in self.par]
+                    # retrieve the parameter for each graph widget in the g_w_to_plot list
+                    # self.par for instance contains [VROT, SBR, PA and INCL]
+                    # g_w_pars will also contain a list of parameters but in the order
+                    # of self.gwObjects e.g. new_par = [PA, SBR, VROT, INCL].
+                    # Create a new sorted list of graph widgets based as below:
+                    # loop through self.par [VROT, SBR, PA, INCL]grab the index of the 
+                    # parameter in the new_par list [PA, SBR, VROT, INCL] i.e. 
+                    # index(VROT) in new_par list: 2
+                    # index(SBR) in new_par list: 1
+                    # index(PA) in new_par list: 0
+                    # index(INCL) in new_par list: 3
+                    # Use these indexes to get a sorted list of graph widgets
+                    # from g_w_to_plot for the plotting
+                    g_w_pars = [g_w.par for g_w in g_w_to_plot]
+                    sorted_g_w_to_plot = []
+                    for par in self.par:
+                        idx = g_w_pars.index(par)
+                        sorted_g_w_to_plot.append(g_w_to_plot[idx])
+                    # delete the unordered list of graph widgets
+                    del g_w_to_plot
 
                     counter = 0
                     for i in range(self.nrows):
                         for j in range(self.ncols):
-                            for k in range(counter, len(self.gwObjects)):
-                                if self.gwObjects[k].par in self.par:
-                                    self.scroll_area_content.addWidget(
-                                        self.gwObjects[k], i, j)
-                                    counter = k+1
-                                    break
+                            self.scroll_grid_layout.addWidget(
+                                sorted_g_w_to_plot[counter], i, j)
+                            # call the show method on the graphWidget object in order to
+                            # display it
+                            sorted_g_w_to_plot[counter].show()
+                            # don't bother iterating to plot if all the parameters have been
+                            # plotted else you'll get an error
+                            if counter == len(sorted_g_w_to_plot) -1 :
+                                break
+                            counter += 1
                 else:
                     QtGui.QMessageBox.information(self, "Information",
-                                                  "Product of Rows and Columns should"
-                                                  "match the current number of parameters"
-                                                  "on viewgraph")
+                                                  "Product of rows and columns should"
+                                                  " match the current number of parameters"
+                                                  " on viewgraph")
 
     def saveFile(self, newVals, sKey, unitMeasurement, numPrecisionX, numPrecisionY):
         """Save changes made to data points to .def file per specified parameter
@@ -1563,8 +1590,8 @@ class MainWindow(QtGui.QMainWindow):
                 self.slotChangeData(self.tmpDeffile)
 
     def openEditor(self):
-        text, ok = QtGui.QInputDialog.getText(self, 'Text Editor Input Dialog',
-                                              'Enter text editor:')
+        text, ok = QtGui.QInputDialog.getText(self, "Text Editor Input Dialog",
+                                              "Enter text editor:")
         if ok:
 
             for i in self.gwObjects:
@@ -1577,7 +1604,7 @@ class MainWindow(QtGui.QMainWindow):
                     run([programName, self.tmpDeffile])
                 except OSError:
                     QtGui.QMessageBox.information(self, "Information",
-                                                  "{} is nxot installed or configured"
+                                                  "{} is not installed or configured"
                                                   "properly on this system.".format(programName))
             else:
                 # assign current modified time of temporary def file to before
@@ -1715,6 +1742,7 @@ class MainWindow(QtGui.QMainWindow):
                 # TODO 03/07/19 (sam): will be nice to add a little close icon on each graph widget
                 # and then implement removeWidget and close functions when it's clicked 
                 self.ps.close()
+
     def paraObj(self):
 
         val = []
@@ -1757,7 +1785,7 @@ class MainWindow(QtGui.QMainWindow):
         """
         QtGui.QMessageBox.information(self, "Information",
                                       "Data cube ("+self.INSET+") specified at INSET"
-                                      "doesn't exist in specified directory.")
+                                      " doesn't exist in specified directory.")
 
     def progressBar(self, cmd):
         progress = QtGui.QProgressDialog("Operation in progress...",
@@ -1849,7 +1877,7 @@ class MainWindow(QtGui.QMainWindow):
             except OSError:
                 QtGui.QMessageBox.information(self, "Information",
                                               "TiRiFiC is not installed or configured"
-                                              "properly on system.")
+                                              " properly on system.")
             else:
                 self.progressPath = str(self.fileName)
                 self.progressPath = self.progressPath.split('/')
