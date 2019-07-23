@@ -229,8 +229,10 @@ classes:
                                            was entered in the scale manager window.
             updateMessage:                 displays information to say update was
                                            successful.
-            paraObj:                       instantiates the parameter specfication class and
-                                           connects btnOK to paramDef function.
+            add_parameter_dialog:          instantiates the parameter specfication class and
+                                           connects btnOK to paramDef function for GW to be added
+            insert_parameter_dialog:       instantiates the parameter specfication class and
+                                           connects btnOK to paramDef function for GW to be inserted
             editParaObj:                   instantiates the parameter specfication class and
                                            connects btnOK to editParamDef function.
             paramDef:                      adds specified paramater viewgraph to layout.
@@ -257,6 +259,7 @@ style.use("seaborn")
 from PyQt5 import QtCore, QtWidgets
 
 currPar = None
+selected_option = None
 fit_par = {'VROT':'km s-1',
            'SBR':'Jy km s-1 arcsec-2',
            'INCL':'degrees',
@@ -269,7 +272,7 @@ fit_par = {'VROT':'km s-1',
            'VSYS':'km s-1',
            'DVRO':'km s-1 arcsec-1',
            'DVRA':'km s-1 arcsec-1',
-           'VRAD': 'km s-1'}
+           'VRAD':'km s-1'}
 
 def _center(self):
     """Centers the window
@@ -372,9 +375,12 @@ class GraphWidget(QtWidgets.QWidget):
 
         self.firstPlot()
 
-    def changeGlobal(self):
+    def changeGlobal(self, val=None):
         global currPar
-        currPar = self.par
+        if val=="None":
+            currPar = None
+        else:
+            currPar = self.par
 
     def _almost_equal(self, a, b, rel_tol=5e-2, abs_tol=0.0):
         '''Takes two values return true if they are almost equal'''
@@ -944,7 +950,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.paraDef = QtWidgets.QAction("&Parameter Definition", self)
         # self.paraDef.setStatusTip('Determines which parameter is plotted')
-        self.paraDef.triggered.connect(self.paraObj)
+        self.paraDef.triggered.connect(self.add_parameter_dialog)
 
     def createMenus(self):
         mainMenu = self.menuBar()
@@ -1250,7 +1256,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.gwObjects[-1].btnAddParam.clicked.connect(
                         self.gwObjects[-1].changeGlobal)
                     self.gwObjects[-1].btnAddParam.clicked.connect(
-                        self.paraObj)
+                        self.insert_parameter_dialog)
                     self.gwObjects[-1].btnEditParam.clicked.connect(
                         self.gwObjects[-1].changeGlobal)
                     self.gwObjects[-1].btnEditParam.clicked.connect(
@@ -1263,8 +1269,9 @@ class MainWindow(QtWidgets.QMainWindow):
                 # retrieve the values in order and build a list of ordered key-value pairs
                 ordered_dict_items = [(key, g_w_to_plot[key]) for key in self.par]
                 for idx, items in enumerate(ordered_dict_items):
-                    graph_widget = items[1]
+                    graph_widget = items[1] # what does 1 represent
                     self.scroll_grid_layout.addWidget(graph_widget, idx, 0)
+                del g_w_to_plot, ordered_dict_items
                 self.runNo+=1
 
     def undoCommand(self):
@@ -1335,6 +1342,7 @@ class MainWindow(QtWidgets.QMainWindow):
                             if counter == len(sorted_g_w_to_plot) -1 :
                                 break
                             counter += 1
+                    del sorted_g_w_to_plot
                 else:
                     QtWidgets.QMessageBox.information(self, "Information",
                                                       "Product of rows and columns should"
@@ -1623,7 +1631,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sm.show()
 
     def paramDef(self):
-        global currPar, fit_par
+        global currPar, fit_par, selected_option
         user_input = self.ps.parameter.currentText()
         # check if the inputted parameter value has its plot displayed
         if (user_input and
@@ -1633,10 +1641,18 @@ class MainWindow(QtWidgets.QMainWindow):
             # if no tilted ring parameter has focus then the graph of the new tilted ring
             # parameter will be placed in the last position
             if currPar:
-                parIndex = self.par.index(currPar)
-                parIndex+=1
+                if selected_option == 'insert':
+                    parIndex = self.par.index(currPar)
+                    parIndex += 1
+                else:
+                    raise ValueError("I'm expecting to insert this new parameter in the"
+                                     " viewgraph but got {}".format(selected_option))
             else:
-                parIndex = len(self.par)
+                if selected_option == 'add':
+                    parIndex = len(self.par)
+                else:
+                    raise ValueError("I'm expecting to add this new parameter in the"
+                                     " viewgraph but got {}".format(selected_option))
             self.par.insert(parIndex,
                             str.upper(str(user_input)))
 
@@ -1676,32 +1692,66 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.gwObjects[parIndex].btnAddParam.clicked.connect(
                     self.gwObjects[parIndex].changeGlobal)
                 self.gwObjects[parIndex].btnAddParam.clicked.connect(
-                    self.paraObj)
+                    self.insert_parameter_dialog)
                 self.gwObjects[parIndex].btnEditParam.clicked.connect(
                     self.gwObjects[parIndex].changeGlobal)
                 self.gwObjects[parIndex].btnEditParam.clicked.connect(
                     self.editParaObj)
+                del list_of_t_r_p
 
-            g_w_to_plot = [gwObject for gwObject in self.gwObjects
-                           if gwObject.par == tilted_ring_par]
-            # let's get the position of the last item in the gridlayout
-            # and the column and row count
-            self.nrows = self.scroll_grid_layout.rowCount() - 1
-            self.ncols = self.scroll_grid_layout.columnCount() - 1
-            last_item_index = self.scroll_grid_layout.count() - 1
-            graph_widget_position = (
-                self.scroll_grid_layout.getItemPosition(last_item_index))
-            row_number = graph_widget_position[0]
-            column_number = graph_widget_position[1]
-            if column_number < self.ncols:
-                self.scroll_grid_layout.addWidget(
-                    g_w_to_plot[0], row_number, column_number+1)
+            self.nrows = self.scroll_grid_layout.rowCount()
+            self.ncols = self.scroll_grid_layout.columnCount()
+            item_count = self.scroll_grid_layout.count()
+            if selected_option == "add":
+                g_w_to_plot = [gwObject for gwObject in self.gwObjects
+                               if gwObject.par == tilted_ring_par][0]
+                last_item_index = item_count - 1
+                graph_widget_position = (
+                    self.scroll_grid_layout.getItemPosition(last_item_index))
+                row_number = graph_widget_position[0]
+                column_number = graph_widget_position[1]
+                if column_number < self.ncols:
+                    self.scroll_grid_layout.addWidget(
+                        g_w_to_plot, row_number, column_number + 1)
+                else:
+                    if row_number == self.nrows:
+                        self.nrows += 1 # does this even matter
+                    self.scroll_grid_layout.addWidget(g_w_to_plot, row_number + 1, 0)
+
+                del g_w_to_plot
             else:
-                if row_number == self.nrows:
-                    self.nrows+=1 # does this even matter
-                self.scroll_grid_layout.addWidget(g_w_to_plot[0], row_number+1, 0)
+                self.nrows += 1
+        
+                for i in range(item_count):
+                    widget_to_remove = self.scroll_grid_layout.itemAt(0).widget()
+                    self.scroll_grid_layout.removeWidget(widget_to_remove)
+                    widget_to_remove.close()
+                
+                # get only the plot widgets for the we want to plot: defined in par
+                    g_w_to_plot = [gwObject for gwObject in self.gwObjects
+                                   if gwObject.par in self.par]
+                    g_w_pars = [g_w.par for g_w in g_w_to_plot]
+                    sorted_g_w_to_plot = []
+                    for par in self.par:
+                        idx = g_w_pars.index(par)
+                        sorted_g_w_to_plot.append(g_w_to_plot[idx])
+                    # delete the unordered list of graph widgets
+                    del g_w_to_plot
 
-            del g_w_to_plot
+                    counter = 0
+                    for i in range(self.nrows):
+                        for j in range(self.ncols):
+                            self.scroll_grid_layout.addWidget(
+                                sorted_g_w_to_plot[counter], i, j)
+                            # call the show method on the graphWidget object in order to
+                            # display it
+                            sorted_g_w_to_plot[counter].show()
+                            # don't bother iterating to plot if all the parameters have been
+                            # plotted else you'll get an error
+                            if counter == len(sorted_g_w_to_plot) - 1 :
+                                break
+                            counter += 1
+                    del sorted_g_w_to_plot
 
             self.ps.close()
 
@@ -1742,20 +1792,30 @@ class MainWindow(QtWidgets.QMainWindow):
                 # TODO 03/07/19 (sam): will be nice to add a little close icon on each graph widget
                 # and then implement removeWidget and close functions when it's clicked 
                 self.ps.close()
-
-    def paraObj(self):
-
+    
+    def create_parameter_dialog(self, opt, title):
+        global selected_option
+        selected_option = opt
         val = []
         for i in self.parVals:
             if i in self.par:
                 continue
             else:
                 val.append(i)
-
-        self.ps = ParamSpec(val, "Add Parameter")
+        self.ps = ParamSpec(val, title)
         self.ps.show()
         self.ps.btnOK.clicked.connect(self.paramDef)
         self.ps.btnCancel.clicked.connect(self.ps.close)
+
+    def add_parameter_dialog(self):
+        selected_option = 'add'
+        title = 'Add Parameter'
+        self.create_parameter_dialog(selected_option, title)
+
+    def insert_parameter_dialog(self):
+        selected_option = 'insert'
+        title = 'Insert Parameter'
+        self.create_parameter_dialog(selected_option, title)
 
     def editParaObj(self):
         val = []
