@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+usr/bin/env python
 # -*- coding: UTF-8 -*-
 #########################################################################################
 # Author: Samuel (samueltwum1@gmail.com) with MSc supervisors                           #
@@ -377,7 +377,7 @@ class GraphWidget(QtWidgets.QWidget):
 
     def changeGlobal(self, val=None):
         global currPar
-        if val=="None":
+        if val == None:
             currPar = None
         else:
             currPar = self.par
@@ -1027,7 +1027,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # dialog box
         # TODO (Samuel 28-11-2018): If cancel is selected then suppress the message in try/except below
         self.fileName, _filter = QtWidgets.QFileDialog.getOpenFileName(self, "Open .def File", "~/",
-                                                          ".def Files (*.def)")
+                                                                       ".def Files (*.def)")
 
         # assign texts of read lines to data variable if fileName is exists, else assign
         # None
@@ -1039,7 +1039,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
             else:
                 QtWidgets.QMessageBox.information(self, "Information",
-                                          "Empty/Invalid file specified")
+                                                  "Empty/Invalid file specified")
             return None
         else:
             return data
@@ -1180,8 +1180,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
             else:
                 QtWidgets.QMessageBox.information(self, "Information",
-                                          "Tilted-ring parameters not retrieved")
-                logging.info('The tilted-ring parameters could not be retrieved from the {}'
+                                                  "Tilted-ring parameters not retrieved")
+                logging.info("The tilted-ring parameters could not be retrieved from the {}"
                              .format(self.fileName))
         else:
             self.data = data
@@ -1189,8 +1189,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 # FIXME reloading another file on already opened not properly working
                 # user has to close open window and reopen file for such a case
                 QtWidgets.QMessageBox.information(self, "Information",
-                                              "Close app and reopen to load file. Bug "
-                                              "being fixed")
+                                                  "Close app and reopen to load file. Bug "
+                                                  "being fixed")
                 # self.cleanUp()
                 # FIXME (Samuel 11-06-2018): Find a better way to do this
                 # self.data = data
@@ -1433,7 +1433,7 @@ class MainWindow(QtWidgets.QMainWindow):
         written to the .def file
         """
         QtWidgets.QMessageBox.information(self, "Information",
-                                      "Changes successfully written to file")
+                                          "Changes successfully written to file")
 
     def saveAs(self, fileName, newVals, sKey, unitMeasurement, numPrecisionX,
                numPrecisionY):
@@ -1520,8 +1520,8 @@ class MainWindow(QtWidgets.QMainWindow):
         held by parameters.
         """
         fileName = QtWidgets.QFileDialog.getSaveFileName(self, "Save .def file as ",
-                                                     os.getcwd(),
-                                                     ".def Files (*.def)")
+                                                         os.getcwd(),
+                                                         ".def Files (*.def)")
         for i in self.gwObjects:
             self.saveAs(fileName, i.parVals, i.par, i.unitMeas, i.numPrecisionX,
                         i.numPrecisionY)
@@ -1645,14 +1645,14 @@ class MainWindow(QtWidgets.QMainWindow):
                     parIndex = self.par.index(currPar)
                     parIndex += 1
                 else:
-                    raise ValueError("I'm expecting to insert this new parameter in the"
-                                     " viewgraph but got {}".format(selected_option))
+                    raise ValueError ("Expecting an insert option but got {}".
+                                      format(selected_option))
             else:
                 if selected_option == 'add':
                     parIndex = len(self.par)
                 else:
-                    raise ValueError("I'm expecting to add this new parameter in the"
-                                     " viewgraph but got {}".format(selected_option))
+                    raise ValueError("Expecting an add option but got {}".
+                                     format(selected_option))
             self.par.insert(parIndex,
                             str.upper(str(user_input)))
 
@@ -1721,12 +1721,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 del g_w_to_plot
             else:
                 self.nrows += 1
-        
+
                 for i in range(item_count):
                     widget_to_remove = self.scroll_grid_layout.itemAt(0).widget()
                     self.scroll_grid_layout.removeWidget(widget_to_remove)
                     widget_to_remove.close()
-                
+
                 # get only the plot widgets for the we want to plot: defined in par
                     g_w_to_plot = [gwObject for gwObject in self.gwObjects
                                    if gwObject.par in self.par]
@@ -1844,12 +1844,12 @@ class MainWindow(QtWidgets.QMainWindow):
         written to the .def file
         """
         QtWidgets.QMessageBox.information(self, "Information",
-                                      "Data cube ("+self.INSET+") specified at INSET"
-                                      " doesn't exist in specified directory.")
+                                          "Data cube ("+self.INSET+") specified at INSET"
+                                          " doesn't exist in specified directory.")
 
     def progressBar(self, cmd):
         progress = QtWidgets.QProgressDialog("Operation in progress...",
-                                         "Cancel", 0, 100)
+                                             "Cancel", 0, 100)
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setMaximum(self.loops*1e6)
         progress.resize(500, 100)
