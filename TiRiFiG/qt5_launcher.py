@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+usr/bin/env python
 # -*- coding: UTF-8 -*-
 #########################################################################################
 # Author: Samuel (samueltwum1@gmail.com) with MSc supervisors                           #
@@ -38,8 +38,6 @@ classes:
 
     GraphWidget:
         Class variables:
-            scaleChange    (bool):         determines whether or not scale has been
-                                           changed.
             redo           (list):         the state of some parameters before undo
                                            action.
             mPress         (list):         x-y values of mouse click.
@@ -112,9 +110,6 @@ classes:
                                            selected parameter.
             yMax           (QLineEdit):    textbox for entering maximum value for
                                            selected parameter.
-            radioFree      (QRadioButton): specifying behaviour of viewgraph as "free".
-            radioViewG     (QRadioButton): specify behaviour of viewgraph as "beyond
-                                           viewgraph".
             btnUpdate      (QPushButton):  update variables with new values and close
                                            window.
             btnCancel      (QPushButton):  cancel changes and close window.
@@ -152,7 +147,8 @@ classes:
             nrows           (int):         the number of rows in grid layout where
                                            viewgraphs are created.
             INSET           (string):      name of data cube retrieved from .def file.
-            par             (list):        list of tilted-ring parameters.
+            par             (list):        list of tilted-ring parameters which have
+                                           their plots displayed in the viewgraph
             unitMeas        (list):        list of unit measurement for respective
                                            parameters in par list.
             tmpDeffile      (string):      path to temp file which is used to sync entry
@@ -233,8 +229,10 @@ classes:
                                            was entered in the scale manager window.
             updateMessage:                 displays information to say update was
                                            successful.
-            paraObj:                       instantiates the parameter specfication class and
-                                           connects btnOK to paramDef function.
+            add_parameter_dialog:          instantiates the parameter specfication class and
+                                           connects btnOK to paramDef function for GW to be added
+            insert_parameter_dialog:       instantiates the parameter specfication class and
+                                           connects btnOK to paramDef function for GW to be inserted
             editParaObj:                   instantiates the parameter specfication class and
                                            connects btnOK to editParamDef function.
             paramDef:                      adds specified paramater viewgraph to layout.
@@ -245,7 +243,7 @@ classes:
             startTiriFiC:                  starts TiRiFiC from terminal.
 """
 
-#libraries
+# libraries
 import os, sys, threading, time, logging
 from subprocess import Popen as run
 from math import ceil
@@ -254,26 +252,27 @@ import numpy as np
 import matplotlib
 matplotlib.use("qt5Agg")
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-#from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+# from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 from matplotlib import style
 style.use("seaborn")
 from PyQt5 import QtCore, QtWidgets
 
 currPar = None
-fit_par = {'SBR':'Jy km s-1 arcsec-2', 
+selected_option = None
+fit_par = {'VROT':'km s-1',
+           'SBR':'Jy km s-1 arcsec-2',
+           'INCL':'degrees',
+           'PA':'degrees',
            'RADI':'arcsec', 
-           'VROT':'km s-1', 
            'Z0':'arcsec',
-           'SDIS':'km s-1', 
-           'INCL':'degrees', 
-           'PA':'degrees', 
+           'SDIS':'km s-1',
            'XPOS':'degrees',
-           'YPOS':'degrees', 
-           'VSYS':'km s-1', 
+           'YPOS':'degrees',
+           'VSYS':'km s-1',
            'DVRO':'km s-1 arcsec-1',
-           'DVRA':'km s-1 arcsec-1', 
-           'VRAD': 'km s-1'}
+           'DVRA':'km s-1 arcsec-1',
+           'VRAD':'km s-1'}
 
 def _center(self):
     """Centers the window
@@ -311,7 +310,6 @@ class TimerThread():
         self.thread.cancel()
 
 class GraphWidget(QtWidgets.QWidget):
-    scaleChange = "No"
     redo = []
     mPress = [None, None]
     mRelease = [None, None]
@@ -319,9 +317,9 @@ class GraphWidget(QtWidgets.QWidget):
     mDblPress = [None, None]
     last_value = 0
 
-    def __init__(self, parent, xScale, yScale, unitMeas, par, parVals, parValRADI,
+    def __init__(self, xScale, yScale, unitMeas, par, parVals, parValRADI,
                  historyList, key, numPrecisionX, numPrecisionY):
-        super(GraphWidget, self).__init__(parent)
+        super(GraphWidget, self).__init__()
         self.xScale = xScale
         self.yScale = yScale
         self.unitMeas = unitMeas
@@ -377,9 +375,12 @@ class GraphWidget(QtWidgets.QWidget):
 
         self.firstPlot()
 
-    def changeGlobal(self):
+    def changeGlobal(self, val=None):
         global currPar
-        currPar = self.par
+        if val == None:
+            currPar = None
+        else:
+            currPar = self.par
 
     def _almost_equal(self, a, b, rel_tol=5e-2, abs_tol=0.0):
         '''Takes two values return true if they are almost equal'''
@@ -549,7 +550,7 @@ class GraphWidget(QtWidgets.QWidget):
         re-draws graph
         """
         if len(self.historyList) > 1:
-            self.redo.append([self.scaleChange, self.numPrecisionY, self.parVals[:], 
+            self.redo.append([self.numPrecisionY, self.parVals[:],
                               self.historyList[-1], self.yScale[:]])
             self.historyList.pop()
             self.parVals = self.historyList[-1][:]
@@ -574,7 +575,6 @@ class GraphWidget(QtWidgets.QWidget):
         """
 
         if len(self.redo) > 0:
-            self.scaleChange = self.redo[-1][0]
             self.numPrecisionY = self.redo[-1][2]
             self.parVals = self.redo[-1][3][:]
             self.historyList.append(self.redo[-1][4][:])
@@ -635,41 +635,6 @@ class GraphWidget(QtWidgets.QWidget):
 
         Produces view graph from historyList or parVals
         """
-        # TODO (sam 28/05/2019) define how plotting will be done for scale change option
-
-        # if self.scaleChange == "Yes":
-        #     for i in range(len(self.par)):
-        #         self.ax.clear()
-        #         self.ax.set_xlim(self.xScale[0], self.xScale[1])
-        #         if (max(self.parVals[self.par[i]]) -
-        #                 min(self.parVals[self.par[i]])) <= 100:
-        #             self.yScale[self.par[i]] = [
-        #                 int(ceil(-2 * max(self.parVals[self.par[i]]))),
-        #                 int(ceil(2 * max(self.parVals[self.par[i]])))]
-        #         else:
-        #             self.yScale[self.par[i]] = [
-        #                 int(ceil(min(self.parVals[self.par[i]]) -
-        #                          0.1 * (max(self.parVals[self.par[i]]) -
-        #                                 min(self.parVals[self.par[i]])))),
-        #                 int(ceil(max(self.parVals[self.par[i]]) +
-        #                          0.1 * (max(self.parVals[self.par[i]]) -
-        #                                 min(self.parVals[self.par[i]]))))
-        #                 ]
-
-        #         self.ax.set_ylim(self.yScale[self.par[i]][0],
-        #                             self.yScale[self.par[i]][1])
-        #         self.ax.set_xlabel("RADI (arcsec)")
-        #         self.ax.set_ylabel(self.par[i] + "( "+self.unitMeas[i]+ " )")
-        #         self.ax.plot(
-        #             self.parVals['RADI'],
-        #             self.historyList[self.par[i]][len(self.historyList[self.par[i]])-1],
-        #             '--bo')
-        #         # self.ax[i].set_title('Plot')
-        #         self.ax.set_xticks(self.parVals['RADI'])
-
-        #     # plt.tight_layout()
-        #     self.canvas.draw()
-        #     self.key = "No"
 
         if self.key == "Yes":
             self.firstPlot()
@@ -682,14 +647,15 @@ class GraphWidget(QtWidgets.QWidget):
                     (self.mPress[0] > (self.parValRADI[j]) - 3) and
                     (self.mRelease[0] is None)):
                     dy = self.mMotion[0] - self.parVals[j]
-                    self.parVals[j]+= dy
+                    self.parVals[j]+=dy
                     bottom, top = self.ax.get_ylim()
                     self.ax.clear()
                     self.ax.set_xlim(self.xScale[0], self.xScale[1])
                     max_yvalue = max(self.parVals)
                     min_yvalue = min(self.parVals)
 
-                    # FIX ME (sam 28/05/2019): scaling points closest to the limit should be relooked
+                    # FIX ME (sam 28/05/2019): scaling points too close to the limit should be relooked
+                    # division by zero was encountered during runtime
                     if ((self.mMotion[0]/min_yvalue) >= 0.95) or ((self.mMotion[0]/max_yvalue) >= 0.95):
                         if self._almost_equal(self.mMotion[0], bottom, rel_tol=5e-2):
                             bottom = min_yvalue - (0.05*(max_yvalue-min_yvalue))
@@ -720,14 +686,14 @@ class GraphWidget(QtWidgets.QWidget):
 
 class SMWindow(QtWidgets.QWidget):
 
-    def __init__(self, par, xVal, gwDict):
+    def __init__(self, par, xVal, gwObjects):
+        # TODO SAM (26/06/2019) no need to pass 'par' to init if we have 'gwObjects'
+        # but maybe we need it because it makes things faster
         super(SMWindow, self).__init__()
         self.xMinVal = xVal[0]
         self.xMaxVal = xVal[1]
-        # self.yMinVal = yVal[0]
-        # self.yMaxVal = yVal[1]
+        self.gwObjects = gwObjects
         self.par = par
-        self.gwDict = gwDict
         self.prevParVal = ""
         self.counter = 0
 
@@ -765,26 +731,19 @@ class SMWindow(QtWidgets.QWidget):
 
         self.hbox = QtWidgets.QHBoxLayout()
         self.hbox.addStretch(1)
-        self.radioFree = QtWidgets.QRadioButton("Free")
-        self.radioViewG = QtWidgets.QRadioButton("Beyond Viewgraph")
-        self.hbox.addWidget(self.radioFree)
-        self.hbox.addWidget(self.radioViewG)
 
         self.hboxBtns = QtWidgets.QHBoxLayout()
         self.hboxBtns.addStretch(1)
         self.btnUpdate = QtWidgets.QPushButton('Update', self)
-        # self.btnUpdate.clicked.connect(self.updateScale)
+        self.btnUpdate.clicked.connect(self.updateScale)
         self.btnCancel = QtWidgets.QPushButton('Cancel', self)
-        # self.btnCancel.clicked.connect(self.close)
+        self.btnCancel.clicked.connect(self.close)
         self.hboxBtns.addWidget(self.btnUpdate)
         self.hboxBtns.addWidget(self.btnCancel)
 
         self.fbox = QtWidgets.QFormLayout()
         self.fbox.addRow(self.xGrid)
         self.fbox.addRow(self.yGrid)
-        # self.fbox.addRow(self.parameter)
-        # self.fbox.addRow(self.yhbox)
-        self.fbox.addRow(QtWidgets.QLabel("Scale Behaviour"), self.hbox)
         self.fbox.addRow(self.hboxBtns)
 
         self.setLayout(self.fbox)
@@ -794,26 +753,46 @@ class SMWindow(QtWidgets.QWidget):
         _center(self)
         self.setFocus()
 
-    def onChangeEvent(self):
+        self.gwDict = {}
+        for gwObject in self.gwObjects:
+            self.gwDict[gwObject.par] = gwObject.yScale[:]
 
+    def onChangeEvent(self):
         if self.yMin.text():
-            self.gwDict[self.prevParVal][0][0] = int(str(self.yMin.text()))
-            self.gwDict[self.prevParVal][0][1] = int(str(self.yMax.text()))
+            self.gwDict[self.prevParVal][0] = int(str(self.yMin.text()))
+        if self.yMax.text():
+            self.gwDict[self.prevParVal][1] = int(str(self.yMax.text()))
 
         for i in self.par:
             if str(self.parameter.currentText()) == i:
                 self.yMin.clear()
-                self.yMin.setPlaceholderText(i+" min ("+str(self.gwDict[i][0][0])+")")
+                self.yMin.setPlaceholderText(i+" min ("+str(self.gwDict[i][0])+")")
                 self.yMax.clear()
-                self.yMax.setPlaceholderText(i+" max ("+str(self.gwDict[i][0][1])+")")
-
-                if str(self.gwDict[i][1]) == "Free":
-                    self.radioFree.setChecked(True)
-                    self.radioViewG.setChecked(False)
-                else:
-                    self.radioFree.setChecked(False)
-                    self.radioViewG.setChecked(True)
+                self.yMax.setPlaceholderText(i+" max ("+str(self.gwDict[i][1])+")")
                 self.prevParVal = i
+
+    def updateScale (self):
+        """Change the values of the instance variables and specific graph widget plots
+        after update button is clicked.
+        """
+        if self.xMin.text():
+            self.xMinVal = int(str(self.xMin.text()))
+
+        if self.xMax.text():
+            self.xMaxVal = int(str(self.xMax.text()))
+
+        if self.yMin.text():
+            self.gwDict[self.prevParVal][0] = int(str(self.yMin.text()))
+
+        if self.yMax.text():
+            self.gwDict[self.prevParVal][1] = int(str(self.yMax.text()))
+
+        for gwObject in self.gwObjects:
+            gwObject.yScale = self.gwDict[gwObject.par][:]
+            gwObject.xScale = [self.xMinVal, self.xMaxVal]
+            gwObject.firstPlot()
+        self.close()
+        QtWidgets.QMessageBox.information(self, "Information", "Done!")
 
 
 class ParamSpec(QtWidgets.QWidget):
@@ -828,12 +807,11 @@ class ParamSpec(QtWidgets.QWidget):
         self.parameter.addItem("Select Parameter")
         for i in self.par:
             self.parameter.addItem(i)
+
         self.parameter.setStyleSheet("QComboBox { combobox-popup: 0; }")
         self.parameter.setMaxVisibleItems(6)
         index = self.parameter.findText("Select Parameter", QtCore.Qt.MatchFixedString)
         self.parameter.setCurrentIndex(index)
-
-
         self.uMeasLabel = QtWidgets.QLabel("Unit Measurement")
         self.unitMeasurement = QtWidgets.QLineEdit()
         # self.unitMeasurement.setPlaceholderText("Unit Measurement")
@@ -861,7 +839,6 @@ class ParamSpec(QtWidgets.QWidget):
 
         _center(self)
         self.setFocus()
-
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -898,23 +875,29 @@ class MainWindow(QtWidgets.QMainWindow):
     def initUI(self):
         self.showMaximized()
         self.setWindowTitle('TiRiFiG')
-        self.cWidget = QtWidgets.QWidget(self)
-        self.setCentralWidget(self.cWidget)
-        self.vLayout = QtWidgets.QVBoxLayout(self.cWidget)
-        # you can ignore the parent and it will still work
-        btnOpen = QtWidgets.QPushButton('&Open File', self.cWidget)
+        # define a widget sitting in the main window where all other widgets will live
+        central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(central_widget)
+        # make this new widget have a vertical layout
+        vertical_layout = QtWidgets.QVBoxLayout()
+        central_widget.setLayout(vertical_layout)
+        # add the buttons and the scroll area which will have the graph widgets
+        # open button
+        btnOpen = QtWidgets.QPushButton('&Open File')
         btnOpen.setFixedSize(80, 30)
-        # btnOpen.setFlat(True)
         btnOpen.setToolTip('Open .def file')
         btnOpen.clicked.connect(self.openDef)
-        self.vLayout.addWidget(btnOpen)
-        # you can ignore the parent and it will still work
-        self.scrollArea = QtWidgets.QScrollArea(self.cWidget)
-        self.scrollArea.setWidgetResizable(True)
-        self.scrollAreaContent = QtWidgets.QWidget(self.scrollArea)
-        self.gridLayoutScroll = QtWidgets.QGridLayout(self.scrollAreaContent)
-        self.scrollArea.setWidget(self.scrollAreaContent)
-        self.vLayout.addWidget(self.scrollArea)
+        vertical_layout.addWidget(btnOpen)
+        # scroll area
+        scroll_area = QtWidgets.QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        # the scroll area needs a widget to be placed inside of it which will hold the content
+        # create one and let it have a grid layout
+        self.scroll_area_content = QtWidgets.QWidget()
+        self.scroll_grid_layout = QtWidgets.QGridLayout()
+        self.scroll_area_content.setLayout(self.scroll_grid_layout)
+        scroll_area.setWidget(self.scroll_area_content)
+        vertical_layout.addWidget(scroll_area)
         self.createActions()
         self.createMenus()
 
@@ -963,16 +946,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.scaleMan = QtWidgets.QAction("&Scale Manager", self)
         self.scaleMan.setStatusTip('Manages behaviour of scale and min and max values')
-        self.scaleMan.triggered.connect(self.inProgress)
+        self.scaleMan.triggered.connect(self.SMobj)
 
         self.paraDef = QtWidgets.QAction("&Parameter Definition", self)
         # self.paraDef.setStatusTip('Determines which parameter is plotted')
-        self.paraDef.triggered.connect(self.paraObj)
-
-        # self.sm.radioFree.clicked.connect(self.getOptF)
-        # self.sm.radioViewG.clicked.connect(self.getOptV)
-        # self.sm.btnUpdate.clicked.connect(self.updateScale)
-        # self.sm.btnCancel.clicked.connect(self.sm.close)
+        self.paraDef.triggered.connect(self.add_parameter_dialog)
 
     def createMenus(self):
         mainMenu = self.menuBar()
@@ -1049,7 +1027,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # dialog box
         # TODO (Samuel 28-11-2018): If cancel is selected then suppress the message in try/except below
         self.fileName, _filter = QtWidgets.QFileDialog.getOpenFileName(self, "Open .def File", "~/",
-                                                          ".def Files (*.def)")
+                                                                       ".def Files (*.def)")
 
         # assign texts of read lines to data variable if fileName is exists, else assign
         # None
@@ -1061,7 +1039,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
             else:
                 QtWidgets.QMessageBox.information(self, "Information",
-                                          "Empty/Invalid file specified")
+                                                  "Empty/Invalid file specified")
             return None
         else:
             return data
@@ -1152,6 +1130,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if lineVals[0].upper() == "NUR":
                     parVal = lineVals[1].split()
                     self.NUR = int(parVal[0])
+                    break
 
         for i in data:
             lineVals = i.split("=")
@@ -1201,8 +1180,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 pass
             else:
                 QtWidgets.QMessageBox.information(self, "Information",
-                                          "Tilted-ring parameters not retrieved")
-                logging.info('The tilted-ring parameters could not be retrieved from the {}'
+                                                  "Tilted-ring parameters not retrieved")
+                logging.info("The tilted-ring parameters could not be retrieved from the {}"
                              .format(self.fileName))
         else:
             self.data = data
@@ -1210,8 +1189,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 # FIXME reloading another file on already opened not properly working
                 # user has to close open window and reopen file for such a case
                 QtWidgets.QMessageBox.information(self, "Information",
-                                              "Close app and reopen to load file. Bug "
-                                              "being fixed")
+                                                  "Close app and reopen to load file. Bug "
+                                                  "being fixed")
                 # self.cleanUp()
                 # FIXME (Samuel 11-06-2018): Find a better way to do this
                 # self.data = data
@@ -1225,9 +1204,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 upper_bound = max(self.parVals['RADI']) + percentage_of_min_max_diff
                 self.xScale = [int(ceil(lower_bound)), int(ceil(upper_bound))]
                 
-                self.scrollWidth = self.scrollAreaContent.width()
-                self.scrollHeight = self.scrollAreaContent.height()
-                counter = 0
+                self.scrollWidth = self.scroll_area_content.width()
+                self.scrollHeight = self.scroll_area_content.height()
+
+                # make a dict to save the graph widgets to be plotted
+                # note that this approach will require another loop.
+                # Not ideal but it gets the job done for now.
+                g_w_to_plot = {}
                 # ensure there are the same points for parameters as there are for RADI as
                 # specified in NUR parameter
                 for key, val in self.parVals.items():
@@ -1262,7 +1245,7 @@ class MainWindow(QtWidgets.QMainWindow):
                         self.yScale[key] = [lower_bound, upper_bound]
                     
                     unit = fit_par[key] if key in fit_par.keys() else ""
-                    self.gwObjects.append(GraphWidget(self.scrollArea, self.xScale,
+                    self.gwObjects.append(GraphWidget(self.xScale,
                                                       self.yScale[key][:],
                                                       unit, key,
                                                       self.parVals[key][:],
@@ -1273,16 +1256,23 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.gwObjects[-1].btnAddParam.clicked.connect(
                         self.gwObjects[-1].changeGlobal)
                     self.gwObjects[-1].btnAddParam.clicked.connect(
-                        self.paraObj)
+                        self.insert_parameter_dialog)
                     self.gwObjects[-1].btnEditParam.clicked.connect(
                         self.gwObjects[-1].changeGlobal)
                     self.gwObjects[-1].btnEditParam.clicked.connect(
                         self.editParaObj)
+                    # TODO we should also probably set the minimum size for the scroll layout
                     self.gwObjects[-1].setMinimumSize(self.scrollWidth/2, self.scrollHeight/2)
                     if key in self.par:
-                        self.gridLayoutScroll.addWidget(self.gwObjects[-1], counter, 0)
-                    counter += 1
-                self.runNo += 1
+                        g_w_to_plot[key] = self.gwObjects[-1]
+
+                # retrieve the values in order and build a list of ordered key-value pairs
+                ordered_dict_items = [(key, g_w_to_plot[key]) for key in self.par]
+                for idx, items in enumerate(ordered_dict_items):
+                    graph_widget = items[1] # what does 1 represent
+                    self.scroll_grid_layout.addWidget(graph_widget, idx, 0)
+                del g_w_to_plot, ordered_dict_items
+                self.runNo+=1
 
     def undoCommand(self):
         global currPar
@@ -1299,8 +1289,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 break
 
     def setRowCol(self):
-        text, ok = QtWidgets.QInputDialog.getText(self, 'Window number Input Dialog',
-                                              'Specify the number of rows and columns (5,5):')
+        text, ok = QtWidgets.QInputDialog.getText(self, "Window number Input Dialog",
+                                                  "Specify the number of rows and columns (5,5):")
         if ok:
             if text:
                 text = str(text)
@@ -1308,25 +1298,56 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.nrows = int(text[0])
                 self.ncols = int(text[1])
                 if (self.nrows * self.ncols) >= len(self.par):
-                    # clear the existing graph objects before making new object for
-                    # new grid
-                    for i in reversed(range(self.gridLayoutScroll.count())):
-                        self.gridLayoutScroll.itemAt(i).widget().setParent(None)
+                    # clear the existing graph objects
+                    item_count = self.scroll_grid_layout.count()
+                    for i in range(item_count):
+                        widget_to_remove = self.scroll_grid_layout.itemAt(0).widget()
+                        self.scroll_grid_layout.removeWidget(widget_to_remove)
+                        widget_to_remove.close()
+
+                    # get only the plot widgets for the we want to plot: defined in par
+                    g_w_to_plot = [gwObject for gwObject in self.gwObjects
+                                   if gwObject.par in self.par]
+                    # retrieve the parameter for each graph widget in the g_w_to_plot list
+                    # self.par for instance contains [VROT, SBR, PA and INCL]
+                    # g_w_pars will also contain a list of parameters but in the order
+                    # of self.gwObjects e.g. new_par = [PA, SBR, VROT, INCL].
+                    # Create a new sorted list of graph widgets based as below:
+                    # loop through self.par [VROT, SBR, PA, INCL]grab the index of the 
+                    # parameter in the new_par list [PA, SBR, VROT, INCL] i.e. 
+                    # index(VROT) in new_par list: 2
+                    # index(SBR) in new_par list: 1
+                    # index(PA) in new_par list: 0
+                    # index(INCL) in new_par list: 3
+                    # Use these indexes to get a sorted list of graph widgets
+                    # from g_w_to_plot for the plotting
+                    g_w_pars = [g_w.par for g_w in g_w_to_plot]
+                    sorted_g_w_to_plot = []
+                    for par in self.par:
+                        idx = g_w_pars.index(par)
+                        sorted_g_w_to_plot.append(g_w_to_plot[idx])
+                    # delete the unordered list of graph widgets
+                    del g_w_to_plot
 
                     counter = 0
                     for i in range(self.nrows):
                         for j in range(self.ncols):
-                            for k in range(counter, len(self.gwObjects)):
-                                if self.gwObjects[k].par in self.par:
-                                    self.gridLayoutScroll.addWidget(
-                                        self.gwObjects[k], i, j)
-                                    counter = k+1
-                                    break
+                            self.scroll_grid_layout.addWidget(
+                                sorted_g_w_to_plot[counter], i, j)
+                            # call the show method on the graphWidget object in order to
+                            # display it
+                            sorted_g_w_to_plot[counter].show()
+                            # don't bother iterating to plot if all the parameters have been
+                            # plotted else you'll get an error
+                            if counter == len(sorted_g_w_to_plot) -1 :
+                                break
+                            counter += 1
+                    del sorted_g_w_to_plot
                 else:
                     QtWidgets.QMessageBox.information(self, "Information",
-                                                  "Product of Rows and Columns should"
-                                                  "match the current number of parameters"
-                                                  "on viewgraph")
+                                                      "Product of rows and columns should"
+                                                      " match the current number of parameters"
+                                                      " on viewgraph")
 
     def saveFile(self, newVals, sKey, unitMeasurement, numPrecisionX, numPrecisionY):
         """Save changes made to data points to .def file per specified parameter
@@ -1412,7 +1433,7 @@ class MainWindow(QtWidgets.QMainWindow):
         written to the .def file
         """
         QtWidgets.QMessageBox.information(self, "Information",
-                                      "Changes successfully written to file")
+                                          "Changes successfully written to file")
 
     def saveAs(self, fileName, newVals, sKey, unitMeasurement, numPrecisionX,
                numPrecisionY):
@@ -1499,8 +1520,8 @@ class MainWindow(QtWidgets.QMainWindow):
         held by parameters.
         """
         fileName = QtWidgets.QFileDialog.getSaveFileName(self, "Save .def file as ",
-                                                     os.getcwd(),
-                                                     ".def Files (*.def)")
+                                                         os.getcwd(),
+                                                         ".def Files (*.def)")
         for i in self.gwObjects:
             self.saveAs(fileName, i.parVals, i.par, i.unitMeas, i.numPrecisionX,
                         i.numPrecisionY)
@@ -1577,8 +1598,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.slotChangeData(self.tmpDeffile)
 
     def openEditor(self):
-        text, ok = QtWidgets.QInputDialog.getText(self, 'Text Editor Input Dialog',
-                                              'Enter text editor:')
+        text, ok = QtWidgets.QInputDialog.getText(self, "Text Editor Input Dialog",
+                                                  "Enter text editor:")
         if ok:
 
             for i in self.gwObjects:
@@ -1591,8 +1612,8 @@ class MainWindow(QtWidgets.QMainWindow):
                     run([programName, self.tmpDeffile])
                 except OSError:
                     QtWidgets.QMessageBox.information(self, "Information",
-                                                  "{} is not installed or configured"
-                                                  "properly on this system.".format(programName))
+                                                      "{} is not installed or configured"
+                                                      "properly on this system.".format(programName))
             else:
                 # assign current modified time of temporary def file to before
                 self.before = os.stat(self.tmpDeffile).st_mtime
@@ -1603,117 +1624,198 @@ class MainWindow(QtWidgets.QMainWindow):
         """Displays the information about feature under development
         """
         QtWidgets.QMessageBox.information(self, "Information",
-                                      "This feature is under development")
+                                          "This feature is under development")
 
     def SMobj(self):
-        filtGwObj = {}
-        for i in self.gwObjects:
-            filtGwObj[i.par] = [i.yScale]
-        self.sm = SMWindow(self.par, self.xScale, filtGwObj)
+        self.sm = SMWindow(self.par, self.xScale, self.gwObjects)
         self.sm.show()
-        self.sm.btnUpdate.clicked.connect(self.updateScale)
-        self.sm.btnCancel.clicked.connect(self.sm.close)
-
-    def updateScale(self):
-
-        if len(self.sm.xMin.text()) > 0:
-            self.sm.xMinVal = int(str(self.sm.xMin.text()))
-            self.sm.xMaxVal = int(str(self.sm.xMax.text()))
-
-        if len(self.sm.yMin.text()) > 0:
-            self.sm.gwDict[self.sm.prevParVal][0][0] = int(str(self.sm.yMin.text()))
-            self.sm.gwDict[self.sm.prevParVal][0][1] = int(str(self.sm.yMax.text()))
-
-        argKeys = [i for i in self.sm.gwDict]
-        counter = 0
-        for i in self.gwObjects:
-            if i.par == argKeys[counter]:
-                i.yScale = self.sm.gwDict[argKeys[counter]][0]
-                i.xScale = [self.sm.xMinVal, self.sm.xMaxVal]
-                counter += 1
-                # FIXME the first plot function should be invoked here
-        self.sm.close
-        QtWidgets.QMessageBox.information(self, "Information", "Done!")
 
     def paramDef(self):
-        global currPar, fit_par
-        parIndex = self.par.index(currPar)
+        global currPar, fit_par, selected_option
+        user_input = self.ps.parameter.currentText()
+        # check if the inputted parameter value has its plot displayed
+        if (user_input and
+            not str.upper(str(user_input)) in self.par):
+            # the graph for the new tilted ring parameter will be inserted right after
+            # the tilted ring parameter which has focus (defined in currPar)
+            # if no tilted ring parameter has focus then the graph of the new tilted ring
+            # parameter will be placed in the last position
+            if currPar:
+                if selected_option == 'insert':
+                    parIndex = self.par.index(currPar)
+                    parIndex += 1
+                else:
+                    raise ValueError ("Expecting an insert option but got {}".
+                                      format(selected_option))
+            else:
+                if selected_option == 'add':
+                    parIndex = len(self.par)
+                else:
+                    raise ValueError("Expecting an add option but got {}".
+                                     format(selected_option))
+            self.par.insert(parIndex,
+                            str.upper(str(user_input)))
 
-        if (len(str(self.ps.parameter.currentText())) > 0 and
-                not str.upper(str(self.ps.parameter.currentText())) in self.par):
-            self.par.insert(parIndex + 1,
-                            str.upper(str(self.ps.parameter.currentText())))
             unitMeas = str(self.ps.unitMeasurement.text())
 
-            if self.par[parIndex + 1] not in self.parVals:
-                zeroVals = []
-                for i in range(self.NUR):
-                    zeroVals.append(0.0)
-                self.parVals[self.par[parIndex + 1]] = zeroVals[:]
+            # only parameters in the self.par variable have their plots displayed.
+            # other parameters specified in the .def file each have a graph widget
+            # object saved as part of the gwObjects list. Handle cases where new parameter
+            # to be plotted doesn't exist in the expected tilted ring parameters (defined
+            # as fit_par) or wasn't defined in the .def file.
+            tilted_ring_par = self.par[parIndex]
+            if tilted_ring_par not in fit_par.keys():
+                fit_par[tilted_ring_par] = unitMeas
+            # check if new tilted ring parameter isn't already in the list of gwObjects
+            list_of_t_r_p = [gwObject.par for gwObject in self.gwObjects]
+            if tilted_ring_par not in list_of_t_r_p:
+                zeroVals = [0.0] * self.NUR
+                self.parVals[tilted_ring_par] = zeroVals[:]
                 del zeroVals
-                self.historyList[self.par[parIndex + 1]] = (
-                    [self.parVals[self.par[parIndex + 1]][:]])
-                self.yScale[self.par[parIndex + 1]] = [-100, 100]
-                fit_par[self.par[parIndex+1]] = unitMeas
-                self.gwObjects.insert(parIndex+1,
-                                      GraphWidget(self.scrollArea,
-                                                  self.xScale,
-                                                  self.yScale[self.par[parIndex+1]],
+                self.historyList[tilted_ring_par] = (
+                    [self.parVals[tilted_ring_par][:]])
+                self.yScale[tilted_ring_par] = [-100, 100]
+                fit_par[tilted_ring_par] = unitMeas
+                self.gwObjects.insert(parIndex,
+                                      GraphWidget(self.xScale,
+                                                  self.yScale[tilted_ring_par],
                                                   unitMeas,
-                                                  self.par[parIndex+1],
-                                                  self.parVals[self.par[parIndex+1]],
+                                                  tilted_ring_par,
+                                                  self.parVals[tilted_ring_par],
                                                   self.parVals['RADI'],
-                                                  self.historyList[self.par[parIndex+1]],
+                                                  self.historyList[tilted_ring_par],
                                                   "Yes",
                                                   self.numPrecisionX,
                                                   1))
-                self.gwObjects[parIndex+1].setMinimumSize(self.scrollWidth/2,
-                                                          self.scrollHeight/2)
-                self.gwObjects[parIndex+1].btnAddParam.clicked.connect(
-                    self.gwObjects[parIndex+1].changeGlobal)
-                self.gwObjects[parIndex+1].btnAddParam.clicked.connect(
-                    self.paraObj)
-                self.gwObjects[parIndex+1].btnEditParam.clicked.connect(
-                    self.gwObjects[parIndex+1].changeGlobal)
-                self.gwObjects[parIndex+1].btnEditParam.clicked.connect(
+                self.gwObjects[parIndex].setMinimumSize(self.scrollWidth/2,
+                                                        self.scrollHeight/2)
+                self.gwObjects[parIndex].btnAddParam.clicked.connect(
+                    self.gwObjects[parIndex].changeGlobal)
+                self.gwObjects[parIndex].btnAddParam.clicked.connect(
+                    self.insert_parameter_dialog)
+                self.gwObjects[parIndex].btnEditParam.clicked.connect(
+                    self.gwObjects[parIndex].changeGlobal)
+                self.gwObjects[parIndex].btnEditParam.clicked.connect(
                     self.editParaObj)
-            else:
-                if self.par[parIndex + 1] not in fit_par.keys():
-                    fit_par[self.par[parIndex + 1]] = unitMeas
-                    for i in self.gwObjects:
-                        if i.par == self.par[parIndex + 1]:
-                            i.unitMeas = unitMeas
-                            break
-            self.nrows += 1
-            for i in reversed(range(self.gridLayoutScroll.count())):
-                self.gridLayoutScroll.itemAt(i).widget().setParent(None)
+                del list_of_t_r_p
 
-            counter = 0
-            for i in range(self.nrows):
-                for j in range(self.ncols):
-                    for k in range(counter, len(self.par)):
-                        for x in range(len(self.gwObjects)):
-                            if self.gwObjects[x].par == self.par[k]:
-                                self.gridLayoutScroll.addWidget(self.gwObjects[x], i, j)
-                                counter = k + 1
+            self.nrows = self.scroll_grid_layout.rowCount()
+            self.ncols = self.scroll_grid_layout.columnCount()
+            item_count = self.scroll_grid_layout.count()
+            if selected_option == "add":
+                g_w_to_plot = [gwObject for gwObject in self.gwObjects
+                               if gwObject.par == tilted_ring_par][0]
+                last_item_index = item_count - 1
+                graph_widget_position = (
+                    self.scroll_grid_layout.getItemPosition(last_item_index))
+                row_number = graph_widget_position[0]
+                column_number = graph_widget_position[1]
+                if column_number < self.ncols:
+                    self.scroll_grid_layout.addWidget(
+                        g_w_to_plot, row_number, column_number + 1)
+                else:
+                    if row_number == self.nrows:
+                        self.nrows += 1 # does this even matter
+                    self.scroll_grid_layout.addWidget(g_w_to_plot, row_number + 1, 0)
+
+                del g_w_to_plot
+            else:
+                self.nrows += 1
+
+                for i in range(item_count):
+                    widget_to_remove = self.scroll_grid_layout.itemAt(0).widget()
+                    self.scroll_grid_layout.removeWidget(widget_to_remove)
+                    widget_to_remove.close()
+
+                # get only the plot widgets for the we want to plot: defined in par
+                    g_w_to_plot = [gwObject for gwObject in self.gwObjects
+                                   if gwObject.par in self.par]
+                    g_w_pars = [g_w.par for g_w in g_w_to_plot]
+                    sorted_g_w_to_plot = []
+                    for par in self.par:
+                        idx = g_w_pars.index(par)
+                        sorted_g_w_to_plot.append(g_w_to_plot[idx])
+                    # delete the unordered list of graph widgets
+                    del g_w_to_plot
+
+                    counter = 0
+                    for i in range(self.nrows):
+                        for j in range(self.ncols):
+                            self.scroll_grid_layout.addWidget(
+                                sorted_g_w_to_plot[counter], i, j)
+                            # call the show method on the graphWidget object in order to
+                            # display it
+                            sorted_g_w_to_plot[counter].show()
+                            # don't bother iterating to plot if all the parameters have been
+                            # plotted else you'll get an error
+                            if counter == len(sorted_g_w_to_plot) - 1 :
                                 break
-                        break
+                            counter += 1
+                    del sorted_g_w_to_plot
 
             self.ps.close()
 
-    def paraObj(self):
+    def editParamDef(self):
+        global currPar, fit_par
+        parIndex = self.par.index(currPar)
+        user_input = self.ps.parameter.currentText()
+        if (user_input and
+            not str.upper(str(user_input)) in self.par):
+            try:
+                self.parVals[self.par[parIndex]]
+            except KeyError:
+                QtWidgets.QMessageBox.information(self, "Information",
+                                                  "This parameter does not exist. Add to"
+                                                  "view it.")
+            else:
+                user_input = str.upper(str(user_input))
+                self.par[parIndex] = user_input
+                unitMeas = str(self.ps.unitMeasurement.text())
+                if user_input not in fit_par.keys():
+                    fit_par[user_input] = unitMeas
+                    for graph_widget in self.gwObjects:
+                        if graph_widget.par == user_input:
+                            graph_widget.unitMeas = unitMeas
+                            break
 
+                g_w_to_plot = [gwObject for gwObject in self.gwObjects
+                               if gwObject.par == user_input]
+                curr_par_position_on_layout = (
+                    self.scroll_grid_layout.getItemPosition(parIndex))
+                row_number = curr_par_position_on_layout[0]
+                column_number = curr_par_position_on_layout[1]
+                widget_to_remove = self.scroll_grid_layout.itemAt(parIndex).widget()
+                self.scroll_grid_layout.removeWidget(widget_to_remove)
+                widget_to_remove.close() # will this make me lose values of tilted-ring parameters?
+                self.scroll_grid_layout.addWidget(g_w_to_plot[0], row_number,
+                                                  column_number)
+                # TODO 03/07/19 (sam): will be nice to add a little close icon on each graph widget
+                # and then implement removeWidget and close functions when it's clicked 
+                self.ps.close()
+    
+    def create_parameter_dialog(self, opt, title):
+        global selected_option
+        selected_option = opt
         val = []
         for i in self.parVals:
             if i in self.par:
                 continue
             else:
                 val.append(i)
-
-        self.ps = ParamSpec(val, "Add Parameter")
+        self.ps = ParamSpec(val, title)
         self.ps.show()
         self.ps.btnOK.clicked.connect(self.paramDef)
         self.ps.btnCancel.clicked.connect(self.ps.close)
+
+    def add_parameter_dialog(self):
+        selected_option = 'add'
+        title = 'Add Parameter'
+        self.create_parameter_dialog(selected_option, title)
+
+    def insert_parameter_dialog(self):
+        selected_option = 'insert'
+        title = 'Insert Parameter'
+        self.create_parameter_dialog(selected_option, title)
 
     def editParaObj(self):
         val = []
@@ -1727,43 +1829,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ps.show()
         self.ps.btnOK.clicked.connect(self.editParamDef)
         self.ps.btnCancel.clicked.connect(self.ps.close)
-
-    def editParamDef(self):
-        global currPar
-        parIndex = self.par.index(currPar)
-        if (len(str(self.ps.parameter.currentText())) > 0 and
-                not str.upper(str(self.ps.parameter.currentText())) in self.par):
-            try:
-                self.parVals[self.par[parIndex]]
-            except KeyError:
-                QtWidgets.QMessageBox.information(self, "Information",
-                                              "This parameter does not exist. Add to"
-                                              "view it.")
-            else:
-                self.par[parIndex] = str.upper(str(self.ps.parameter.currentText()))
-                unitMeas = str(self.ps.unitMeasurement.text())
-                if self.par[parIndex] not in fit_par.keys():
-                    fit_par[self.par[parIndex]] = unitMeas
-                    for i in self.gwObjects:
-                        if i.par == self.par[parIndex]:
-                            i.unitMeas = unitMeas
-                            break
-
-                for i in reversed(range(self.gridLayoutScroll.count())):
-                    self.gridLayoutScroll.itemAt(i).widget().setParent(None)
-
-                counter = 0
-                for i in range(self.nrows):
-                    for j in range(self.ncols):
-                        for k in range(counter, len(self.par)):
-                            for x in range(len(self.gwObjects)):
-                                if self.gwObjects[x].par == self.par[k]:
-                                    self.gridLayoutScroll.addWidget(self.gwObjects[x], i, j)
-                                    counter = k + 1
-                                    break
-                            break
-
-                self.ps.close()
 
     def tirificMessage(self):
         """Displays the information about input data cube not available
@@ -1779,12 +1844,12 @@ class MainWindow(QtWidgets.QMainWindow):
         written to the .def file
         """
         QtWidgets.QMessageBox.information(self, "Information",
-                                      "Data cube ("+self.INSET+") specified at INSET"
-                                      "doesn't exist in specified directory.")
+                                          "Data cube ("+self.INSET+") specified at INSET"
+                                          " doesn't exist in specified directory.")
 
     def progressBar(self, cmd):
         progress = QtWidgets.QProgressDialog("Operation in progress...",
-                                         "Cancel", 0, 100)
+                                             "Cancel", 0, 100)
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setMaximum(self.loops*1e6)
         progress.resize(500, 100)
@@ -1871,8 +1936,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 cmd = run(["tirific", "deffile=", self.fileName])
             except OSError:
                 QtWidgets.QMessageBox.information(self, "Information",
-                                              "TiRiFiC is not installed or configured"
-                                              "properly on system.")
+                                                  "TiRiFiC is not installed or configured"
+                                                  " properly on system.")
             else:
                 self.progressPath = str(self.fileName)
                 self.progressPath = self.progressPath.split('/')
